@@ -15,3 +15,8 @@
      CLIENT_ID=<clientID>
      ```
   
+## Usage
+
+### Pull tasks from a to-do list
+
+  1. `go run ./cmd/twtodo/main.go pull 'LIST_ID'`
