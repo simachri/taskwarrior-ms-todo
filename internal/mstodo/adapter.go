@@ -9,22 +9,37 @@ import (
 
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/microsoftgraph/msgraph-sdk-go/models"
+	graphconfig "github.com/microsoftgraph/msgraph-sdk-go/me/todo/lists/item/tasks"
 )
 
-// ReadTasks uses the Microsoft Graph API to fetch the To-Do tasks.
-func ReadTasks(
+// ReadOpenTasks uses the Microsoft Graph API to fetch the To-Do tasks with status
+// 'notStarted'.
+func ReadOpenTasks(
 	client *msgraphsdk.GraphServiceClient,
 	listID string,
 ) (models.TodoTaskCollectionResponseable, error) {
-	tasks, err := client.Me().Todo().ListsById(listID).Tasks().Get()
+    openTasksFilter := "status eq 'notStarted'"
+	reqParams := &graphconfig.TasksRequestBuilderGetQueryParameters{
+		Filter: &openTasksFilter,
+	}
+	reqConf := &graphconfig.TasksRequestBuilderGetRequestConfiguration{
+		QueryParameters: reqParams,
+	}
+
+	tasks, err := client.Me().
+		Todo().
+		ListsById(listID).
+		Tasks().
+		GetWithRequestConfigurationAndResponseHandler(reqConf, nil)
+
 	if err != nil {
 		return nil, fmt.Errorf(
-			"[ReadTasks] Failed to fetch the tasks of to-do list '%s': %w\n",
+			"[ReadTasks] Failed to fetch the tasks of To-Do list '%s': %w\n",
 			listID,
 			err,
 		)
 	}
-    return tasks, nil
+	return tasks, nil
 }
 
 // Authenticate creates a Microsoft Graph client using the Device Code Authentication
