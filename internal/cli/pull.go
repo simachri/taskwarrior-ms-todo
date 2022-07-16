@@ -6,22 +6,24 @@ import (
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/simachri/taskwarrior-ms-todo/internal/mstodo"
 	tw "github.com/simachri/taskwarrior-ms-todo/internal/taskwarrior"
+	"github.com/spf13/cobra"
 )
 
 type command interface {
 	exec(client *msgraphsdk.GraphServiceClient) error
 }
 
-type tasksPull struct {
-	listID string
+type tasksPullCmd struct {
+	listID *string
+	cmd    *cobra.Command
 }
 
-func (t tasksPull) exec(client *msgraphsdk.GraphServiceClient) error {
+func (cmd tasksPullCmd) exec(client *msgraphsdk.GraphServiceClient) error {
 	fmt.Printf(
 		"[taskPull] Fetching tasks from MS To-Do list '%s'...\n",
-		t.listID,
+		*cmd.listID,
 	)
-	tasks, err := mstodo.ReadOpenTasks(client, t.listID)
+	tasks, err := mstodo.ReadOpenTasks(client, cmd.listID)
 	if err != nil {
 		return err
 	}
@@ -34,12 +36,12 @@ func (t tasksPull) exec(client *msgraphsdk.GraphServiceClient) error {
 
 	for _, task := range tList {
 		todoTaskID := task.GetId()
-        taskExists, err := tw.TaskExists(*todoTaskID)
-        if (err != nil) {
-            fmt.Println(err)
-            continue
-        }
-		if  (taskExists){
+		taskExists, err := tw.TaskExists(*todoTaskID)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		if taskExists {
 			fmt.Printf(
 				"[taskPull] SKIP - task already exists in Taskwarrior: '%s'\n",
 				*task.GetTitle(),
@@ -62,4 +64,22 @@ func (t tasksPull) exec(client *msgraphsdk.GraphServiceClient) error {
 		)
 	}
 	return nil
+}
+
+func addPullCmd(parentCmd *cobra.Command, client *msgraphsdk.GraphServiceClient) {
+	pullCmd := &tasksPullCmd{}
+
+    c := &cobra.Command{
+		Use:   "pull [MS To-Do Tasklist ID]",
+		Short: "Pull tasks",
+		Long:  `Pulls the tasks from a MS To-Do list and creates them as tasks in  Taskwarrior`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return pullCmd.exec(client)
+		},
+	}
+	pullCmd.listID = c.PersistentFlags().
+		StringP("list", "l", "", "MS To-Do Tasklist ID")
+    pullCmd.cmd = c
+   
+	parentCmd.AddCommand(c)
 }

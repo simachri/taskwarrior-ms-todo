@@ -14,5 +14,7 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-    cli.Sync(client)
+    if err = cli.Execute(client); err != nil {
+		os.Exit(1)
+    }
 }

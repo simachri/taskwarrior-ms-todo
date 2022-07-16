@@ -16,7 +16,7 @@ import (
 // 'notStarted'.
 func ReadOpenTasks(
 	client *msgraphsdk.GraphServiceClient,
-	listID string,
+	listID *string,
 ) (models.TodoTaskCollectionResponseable, error) {
     openTasksFilter := "status eq 'notStarted'"
 	reqParams := &graphconfig.TasksRequestBuilderGetQueryParameters{
@@ -28,14 +28,14 @@ func ReadOpenTasks(
 
 	tasks, err := client.Me().
 		Todo().
-		ListsById(listID).
+		ListsById(*listID).
 		Tasks().
 		GetWithRequestConfigurationAndResponseHandler(reqConf, nil)
 
 	if err != nil {
 		return nil, fmt.Errorf(
 			"[ReadTasks] Failed to fetch the tasks of To-Do list '%s': %w\n",
-			listID,
+			*listID,
 			err,
 		)
 	}
