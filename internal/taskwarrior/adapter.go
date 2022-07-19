@@ -22,7 +22,7 @@ func TaskExists(todoID string) (bool, error) {
 			return false, nil
 		}
 
-	    fmt.Println(cmd.Args)
+		fmt.Println(cmd.Args)
 		return false, fmt.Errorf(
 			"[TaskExists] Failed to check task existence for todoID '%v': %v\n",
 			todoID,
@@ -34,7 +34,7 @@ func TaskExists(todoID string) (bool, error) {
 }
 
 // CreateTask creates a Taskwarrior task using the 'task' CLI.
-// The last 13 characters of the Microsoft To-Do task ID are stored as user-defined 
+// The last 13 characters of the Microsoft To-Do task ID are stored as user-defined
 // attribute (UDA) in the Taskwarrior task.
 func CreateTask(title string, todoID string) (taskUUID string, err error) {
 	// 'task add "TITLE" returns a message 'Created task 42.'
@@ -56,20 +56,31 @@ func CreateTask(title string, todoID string) (taskUUID string, err error) {
 	return fmt.Sprintf("%s", uuid), nil
 }
 
-// CreateUDAs creates the following User Defined Attributes (UDAs):
-// ms_todo_id: Microsoft To-Do Task ID as received from the API
-func CreateUDAs() (err error) {
+// CreateUDA creates a User Defined Attribute (UDA) in Taskwarrior.
+func CreateUDA(name string, label string) (err error) {
 	// 'echo "yes"' is required to answer the prompt 'Are you sure?'.
-	err = exec.Command("echo", "'yes' |",
-		fmt.Sprintf("task config uda.%s.type string", udaNameTodoID),
-		"&&",
-		fmt.Sprintf("task config uda.%s.label ToDo-ID", udaNameTodoID)).Run()
+    out, err := exec.Command("bash", "-c",
+		fmt.Sprintf("'yes' | task config uda.%s.type string", name)).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf(
-			"[CreateUDAs] Failed to create UDA '%s': %w\n",
-			udaNameTodoID,
+            "[CreateUDAs] Failed to create UDA '%s': %w\nOutput of command: %s\n",
+			name,
 			err,
+            out,
 		)
 	}
+	out, err = exec.Command("bash", "-c",
+		fmt.Sprintf("'yes' | task config uda.%s.label %s", name, label)).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf(
+            "[CreateUDAs] Failed to create UDA '%s': %w\nOutput of command: %s\n",
+			name,
+			err,
+            out,
+		)
+	}
+
+	fmt.Printf("[CreatedUDAs]: UDA '%s' created.\n", name)
+
 	return nil
 }
