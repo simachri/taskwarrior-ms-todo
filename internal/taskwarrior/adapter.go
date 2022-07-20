@@ -7,14 +7,14 @@ import (
 
 // Taskwarrior User Defined Attribute (UDA): Microsoft To-Do Task ID as received from the
 // API
-const udaNameTodoID = "ms_todo_id"
+const UDANameTodoID = "ms_todo_id"
 
 // TaskExists returns 'true' if a Taskwarrior task for the given Microsoft To-Do task ID
 // exists, otherwise 'false'.
 func TaskExists(todoID string) (bool, error) {
 	cmd := exec.Command("bash", "-c",
-		fmt.Sprintf("task %s:%s", udaNameTodoID, todoID))
-	err := cmd.Run()
+		fmt.Sprintf("task %s:%s", UDANameTodoID, todoID))
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		exitErr, ok := err.(*exec.ExitError)
 		if ok == true && exitErr.ExitCode() == 1 {
@@ -22,7 +22,8 @@ func TaskExists(todoID string) (bool, error) {
 			return false, nil
 		}
 
-		fmt.Println(cmd.Args)
+        fmt.Printf("[TaskExists] Command:\n%s\n", cmd.Args)
+        fmt.Printf("[TaskExists] Output:\n%s\n", out)
 		return false, fmt.Errorf(
 			"[TaskExists] Failed to check task existence for todoID '%v': %v\n",
 			todoID,
@@ -39,7 +40,7 @@ func TaskExists(todoID string) (bool, error) {
 func CreateTask(title string, todoID string) (taskUUID string, err error) {
 	// 'task add "TITLE" returns a message 'Created task 42.'
 	cmd := exec.Command("bash", "-c",
-		fmt.Sprintf("task add '%s' %s:'%s'", title, udaNameTodoID, todoID)+
+		fmt.Sprintf("task add '%s' %s:'%s'", title, UDANameTodoID, todoID)+
 			// Extract the task ID
 			" | grep -oP '[0-9]+'"+
 			// Extract the task UUID.
