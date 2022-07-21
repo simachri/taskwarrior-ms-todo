@@ -21,6 +21,16 @@ func createTempTaskRC(t *testing.T) (taskrcPath string) {
 	return taskrcPath
 }
 
+func TestCreateUDAs_emptyString_raisesErr(t *testing.T) {
+	// Use a custom .taskrc for testing.
+	createTempTaskRC(t)
+	udaName := ""
+	udaLabel := ""
+
+	err := CreateUDA(udaName, udaLabel)
+	assert.Error(t, err)
+}
+
 func TestCreateUDAs_noUDAs_existAfterwards(t *testing.T) {
 	// Use a custom .taskrc for testing.
 	taskrc := createTempTaskRC(t)
