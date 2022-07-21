@@ -81,7 +81,5 @@ func CreateUDA(name string, label string) (err error) {
 		)
 	}
 
-	fmt.Printf("[CreatedUDAs]: UDA '%s' created.\n", name)
-
 	return nil
 }

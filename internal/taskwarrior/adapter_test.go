@@ -11,27 +11,28 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func createTempTaskRC (t *testing.T) (taskrcName string, taskrcFile *os.File) {
-	taskrc := filepath.Join(t.TempDir(), "taskrc")
-	file, err := os.Create(taskrc)
+func createTempTaskRC(t *testing.T) (taskrcPath string) {
+	taskrcPath = filepath.Join(t.TempDir(), "taskrc")
+	file, err := os.Create(taskrcPath)
 	assert.NoError(t, err, "Failed to create .taskrc for testing.")
-	os.Setenv("TASKRC", taskrc)
-    return taskrc, file
+	err = file.Close()
+	assert.NoError(t, err, "Failed to close file handle to .taskrc.")
+	os.Setenv("TASKRC", taskrcPath)
+	return taskrcPath
 }
 
 func TestCreateUDAs_noUDAs_existAfterwards(t *testing.T) {
 	// Use a custom .taskrc for testing.
-    taskrc, file := createTempTaskRC(t)
-	defer file.Close()
+	taskrc := createTempTaskRC(t)
 	udaName := "foo"
 	udaLabel := "bar"
 
-    err := CreateUDA(udaName, udaLabel)
+	err := CreateUDA(udaName, udaLabel)
 	assert.NoError(t, err, "CreateUDA returned an error.")
 
 	out, err := exec.Command("bash", "-c", fmt.Sprintf("cat %s", taskrc)).
 		CombinedOutput()
-	fmt.Println(string(out))
+	t.Log(string(out))
 	err = exec.Command("bash", "-c", fmt.Sprintf("cat %s | grep uda.%s.label=%s", taskrc, udaName, udaLabel)).
 		Run()
 	assert.NoError(
@@ -53,10 +54,9 @@ func TestCreateUDAs_noUDAs_existAfterwards(t *testing.T) {
 	)
 }
 
-func TestTaskExists_notExistsOK(t *testing.T) {
+func setup(t *testing.T) {
 	// Use a custom .taskrc for testing.
-    _, taskrcFile := createTempTaskRC(t)
-	defer taskrcFile.Close()
+	createTempTaskRC(t)
 
 	// Use a custom TASKDATA directory for testing.
 	taskdataPath := filepath.Join(t.TempDir(), "task")
@@ -64,9 +64,13 @@ func TestTaskExists_notExistsOK(t *testing.T) {
 	assert.NoError(t, err, "Failed to create TASKDATA directory for testing.")
 	os.Setenv("TASKDATA", taskdataPath)
 
-    // Create UDA for the To-Do ID.
-    err = CreateUDA(UDANameTodoID, "foo")
+	// Create UDA for the To-Do ID.
+	err = CreateUDA(UDANameTodoID, "foo")
 	assert.NoError(t, err, "CreateUDA returned an error.")
+}
+
+func TestTaskExists_notExists_returnsFalse(t *testing.T) {
+	setup(t)
 
 	toDoID := generateRandomString(10)
 	exists, err := TaskExists(toDoID)
@@ -79,6 +83,35 @@ func TestTaskExists_notExistsOK(t *testing.T) {
 		exists,
 		fmt.Sprintf("Task with To-Do ID '%s' must not exist.", toDoID),
 	)
+}
+
+func TestCreateTask_isOK(t *testing.T) {
+	setup(t)
+
+	toDoID := generateRandomString(10)
+	taskUUID, err := CreateTask("foo", toDoID)
+	assert.NoError(
+		t,
+		err,
+		"CreateTask returned an error")
+	assert.NotEmpty(
+		t,
+		taskUUID,
+		fmt.Sprint("CreateTask returned an empty taskUUID."),
+	)
+}
+
+func TestTaskExists_exists_returnsTrue(t *testing.T) {
+	setup(t)
+
+	toDoID := generateRandomString(10)
+	CreateTask("foo", toDoID)
+    exists, err := TaskExists(toDoID)
+	assert.NoError(
+		t,
+		err,
+		"TaskExists returned an error")
+    assert.True(t, exists)
 }
 
 func generateRandomString(length int) string {
