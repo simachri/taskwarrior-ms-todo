@@ -22,4 +22,4 @@
 
 ### Pull tasks from a to-do list
 
-  1. `go run ./cmd/twtodo/main.go pull -l 'LIST_ID'`
+  1. `twtodo pull -l 'LIST_ID'`
