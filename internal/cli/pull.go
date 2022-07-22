@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/simachri/taskwarrior-ms-todo/internal/mstodo"
@@ -66,20 +67,27 @@ func (cmd tasksPullCmd) exec(client *msgraphsdk.GraphServiceClient) error {
 	return nil
 }
 
-func addPullCmd(parentCmd *cobra.Command, client *msgraphsdk.GraphServiceClient) {
+func addPullCmd(parentCmd *cobra.Command, client *mstodo.Client) {
 	pullCmd := &tasksPullCmd{}
 
-    c := &cobra.Command{
+	c := &cobra.Command{
 		Use:   "pull [MS To-Do Tasklist ID]",
 		Short: "Pull tasks",
 		Long:  `Pulls the tasks from a MS To-Do list and creates them as tasks in  Taskwarrior`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pullCmd.exec(client)
+			authenticatedClient, err := client.Get(
+				os.Getenv("TENANT_ID"),
+				os.Getenv("CLIENT_ID"),
+			)
+			if err != nil {
+				return err
+			}
+			return pullCmd.exec(authenticatedClient)
 		},
 	}
 	pullCmd.listID = c.PersistentFlags().
 		StringP("list", "l", "", "MS To-Do Tasklist ID")
-    pullCmd.cmd = c
-   
+	pullCmd.cmd = c
+
 	parentCmd.AddCommand(c)
 }

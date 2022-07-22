@@ -8,9 +8,32 @@ import (
 	a "github.com/microsoft/kiota-authentication-azure-go"
 
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
-	"github.com/microsoftgraph/msgraph-sdk-go/models"
 	graphconfig "github.com/microsoftgraph/msgraph-sdk-go/me/todo/lists/item/tasks"
+	"github.com/microsoftgraph/msgraph-sdk-go/models"
 )
+
+type Client struct {
+	authenticatedClient *msgraphsdk.GraphServiceClient
+}
+
+// GetClient creates a Microsoft Graph client using the Device Code Authentication
+// Provider.
+func (c *Client) Get(
+	tenantID string,
+	clientID string,
+) (*msgraphsdk.GraphServiceClient, error) {
+	if c.authenticatedClient != nil {
+		return c.authenticatedClient, nil
+	}
+
+	client, err := authenticate(tenantID, clientID)
+	if err != nil {
+		return nil, err
+	}
+
+	c.authenticatedClient = client
+	return c.authenticatedClient, nil
+}
 
 // ReadOpenTasks uses the Microsoft Graph API to fetch the To-Do tasks with status
 // 'notStarted'.
@@ -18,7 +41,7 @@ func ReadOpenTasks(
 	client *msgraphsdk.GraphServiceClient,
 	listID *string,
 ) (models.TodoTaskCollectionResponseable, error) {
-    openTasksFilter := "status eq 'notStarted'"
+	openTasksFilter := "status eq 'notStarted'"
 	reqParams := &graphconfig.TasksRequestBuilderGetQueryParameters{
 		Filter: &openTasksFilter,
 	}
@@ -31,7 +54,6 @@ func ReadOpenTasks(
 		ListsById(*listID).
 		Tasks().
 		GetWithRequestConfigurationAndResponseHandler(reqConf, nil)
-
 	if err != nil {
 		return nil, fmt.Errorf(
 			"[ReadTasks] Failed to fetch the tasks of To-Do list '%s': %w\n",
@@ -42,9 +64,7 @@ func ReadOpenTasks(
 	return tasks, nil
 }
 
-// Authenticate creates a Microsoft Graph client using the Device Code Authentication
-// Provider.
-func Authenticate(
+func authenticate(
 	tenantID string,
 	clientID string,
 ) (*msgraphsdk.GraphServiceClient, error) {
