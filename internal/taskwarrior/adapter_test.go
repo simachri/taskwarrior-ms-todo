@@ -98,8 +98,9 @@ func TestTaskExists_notExists_returnsFalse(t *testing.T) {
 func TestCreateTask_isOK(t *testing.T) {
 	setup(t)
 
+	taskTitle := "foo"
 	toDoID := generateRandomString(10)
-	taskUUID, err := CreateTask("foo", toDoID)
+	taskUUID, err := CreateTask(&taskTitle, &toDoID)
 	assert.NoError(
 		t,
 		err,
@@ -114,14 +115,15 @@ func TestCreateTask_isOK(t *testing.T) {
 func TestTaskExists_exists_returnsTrue(t *testing.T) {
 	setup(t)
 
+	taskTitle := "foo"
 	toDoID := generateRandomString(10)
-	CreateTask("foo", toDoID)
-    exists, err := TaskExists(toDoID)
+	CreateTask(&taskTitle, &toDoID)
+	exists, err := TaskExists(toDoID)
 	assert.NoError(
 		t,
 		err,
 		"TaskExists returned an error")
-    assert.True(t, exists)
+	assert.True(t, exists)
 }
 
 func generateRandomString(length int) string {

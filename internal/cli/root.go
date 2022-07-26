@@ -5,15 +5,16 @@ import (
 	"path/filepath"
 
 	"github.com/adrg/xdg"
-	"github.com/joho/godotenv"
 	"github.com/simachri/taskwarrior-ms-todo/internal/mstodo"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var (
-	cfgFileName         string
-	credentialsFileName string
+	cfgFileName          string
+	credentialsFileName  string
+	cfgFileViper         = viper.New()
+	credentialsFileViper = viper.New()
 
 	rootCmd = &cobra.Command{
 		Use:   "twtodo",
@@ -23,7 +24,28 @@ var (
 )
 
 func Execute() error {
-	addPullCmd(rootCmd, &mstodo.Client{})
+	graphClientFactory := &mstodo.ClientFactory{
+		// Passing this as function is required as Viper parses the config not before
+		// a command's Execute() function is called.
+		GetTenantID: func() string { return credentialsFileViper.GetString("tenant_id") },
+		GetClientID: func() string { return credentialsFileViper.GetString("client_id") },
+	}
+
+	getUpCmdConfig := func() (*UpCmdConfig, error) {
+		configKey := "server"
+		var config UpCmdConfig
+		err := cfgFileViper.UnmarshalKey(configKey, &config)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"[Config] Failed to read key '%s' from config.yaml.",
+				configKey,
+			)
+		}
+		return &config, nil
+	}
+	addUpCmd(rootCmd, graphClientFactory, getUpCmdConfig)
+
+	addPullCmd(rootCmd)
 
 	return rootCmd.Execute()
 }
@@ -43,22 +65,29 @@ func initConfig() {
 
 	if cfgFileName != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(cfgFileName)
+		cfgFileViper.SetConfigFile(cfgFileName)
 	} else {
-		viper.AddConfigPath(filepath.Join(xdg.ConfigHome, twtodoCfg))
-		viper.SetConfigType("yaml")
-		viper.SetConfigName("config")
+		cfgFileViper.AddConfigPath(filepath.Join(xdg.ConfigHome, twtodoCfg))
+		cfgFileViper.SetConfigType("yaml")
+		cfgFileViper.SetConfigName("config")
 	}
-
-	viper.AutomaticEnv()
-
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	cfgFileViper.AutomaticEnv()
+	if err := cfgFileViper.ReadInConfig(); err == nil {
+		fmt.Println("[Config] Using config file:", cfgFileViper.ConfigFileUsed())
 	}
 
 	if credentialsFileName != "" {
-		godotenv.Load(credentialsFileName)
+		credentialsFileViper.SetConfigFile(credentialsFileName)
 	} else {
-		godotenv.Load(filepath.Join(xdg.ConfigHome, twtodoCfg, "credentials.env"))
+		credentialsFileViper.AddConfigPath(filepath.Join(xdg.ConfigHome, twtodoCfg))
+		credentialsFileViper.SetConfigType("yaml")
+		credentialsFileViper.SetConfigName("credentials")
+	}
+	credentialsFileViper.AutomaticEnv()
+	if err := credentialsFileViper.ReadInConfig(); err == nil {
+		fmt.Println(
+			"[Config] Using credentials file:",
+			credentialsFileViper.ConfigFileUsed(),
+		)
 	}
 }

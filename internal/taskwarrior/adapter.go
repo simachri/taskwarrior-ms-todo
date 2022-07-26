@@ -22,8 +22,8 @@ func TaskExists(todoID string) (bool, error) {
 			return false, nil
 		}
 
-        fmt.Printf("[TaskExists] Command:\n%s\n", cmd.Args)
-        fmt.Printf("[TaskExists] Output:\n%s\n", out)
+		fmt.Printf("[TaskExists] Command:\n%s\n", cmd.Args)
+		fmt.Printf("[TaskExists] Output:\n%s\n", out)
 		return false, fmt.Errorf(
 			"[TaskExists] Failed to check task existence for todoID '%v': %v\n",
 			todoID,
@@ -37,10 +37,10 @@ func TaskExists(todoID string) (bool, error) {
 // CreateTask creates a Taskwarrior task using the 'task' CLI.
 // The last 13 characters of the Microsoft To-Do task ID are stored as user-defined
 // attribute (UDA) in the Taskwarrior task.
-func CreateTask(title string, todoID string) (taskUUID string, err error) {
+func CreateTask(title *string, todoID *string) (taskUUID string, err error) {
 	// 'task add "TITLE" returns a message 'Created task 42.'
 	cmd := exec.Command("bash", "-c",
-		fmt.Sprintf("task add '%s' %s:'%s'", title, UDANameTodoID, todoID)+
+		fmt.Sprintf("task add '%s' %s:'%s'", *title, UDANameTodoID, *todoID)+
 			// Extract the task ID
 			" | grep -oP '[0-9]+'"+
 			// Extract the task UUID.
@@ -60,24 +60,24 @@ func CreateTask(title string, todoID string) (taskUUID string, err error) {
 // CreateUDA creates a User Defined Attribute (UDA) in Taskwarrior.
 func CreateUDA(name string, label string) (err error) {
 	// 'echo "yes"' is required to answer the prompt 'Are you sure?'.
-    out, err := exec.Command("bash", "-c",
+	out, err := exec.Command("bash", "-c",
 		fmt.Sprintf("'yes' | task config uda.%s.type string", name)).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf(
-            "[CreateUDAs] Failed to create UDA '%s': %w\nOutput of command: %s\n",
+			"[CreateUDAs] Failed to create UDA '%s': %w\nOutput of command: %s\n",
 			name,
 			err,
-            out,
+			out,
 		)
 	}
 	out, err = exec.Command("bash", "-c",
 		fmt.Sprintf("'yes' | task config uda.%s.label %s", name, label)).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf(
-            "[CreateUDAs] Failed to create UDA '%s': %w\nOutput of command: %s\n",
+			"[CreateUDAs] Failed to create UDA '%s': %w\nOutput of command: %s\n",
 			name,
 			err,
-            out,
+			out,
 		)
 	}
 

@@ -2,6 +2,7 @@ package mstodo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	azidentity "github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -9,21 +10,41 @@ import (
 
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	graphconfig "github.com/microsoftgraph/msgraph-sdk-go/me/todo/lists/item/tasks"
-	"github.com/microsoftgraph/msgraph-sdk-go/models"
 )
 
-type Client struct {
+var authenticatedGraphClient *GraphClient
+
+type ClientFactory struct {
+    // Using functions is required as Viper parses the config not before a command's 
+    // Execute() function is called.
+    GetTenantID func() string
+    GetClientID func() string
+}
+
+type ClientFacade interface {
+	ReadOpenTasks(listID *string) (*[]Task, error)
+}
+
+type GraphClient struct {
 	authenticatedClient *msgraphsdk.GraphServiceClient
 }
 
-// GetClient creates a Microsoft Graph client using the Device Code Authentication
-// Provider.
-func (c *Client) Get(
-	tenantID string,
-	clientID string,
-) (*msgraphsdk.GraphServiceClient, error) {
-	if c.authenticatedClient != nil {
-		return c.authenticatedClient, nil
+// Get returns a singleton instance of a Microsoft Graph client using the Device Code
+// Authentication Provider.
+func (fact *ClientFactory) GetGraphClient() (*GraphClient,
+	error,
+) {
+	if authenticatedGraphClient != nil {
+		return authenticatedGraphClient, nil
+	}
+
+	tenantID := fact.GetTenantID()
+	clientID := fact.GetClientID()
+
+	if tenantID == "" || clientID == "" {
+		return nil, errors.New(
+			"[AzureAuth] Empty Azure Tenant ID and/or Client ID. Check the credentials.yaml file.",
+		)
 	}
 
 	client, err := authenticate(tenantID, clientID)
@@ -31,16 +52,25 @@ func (c *Client) Get(
 		return nil, err
 	}
 
-	c.authenticatedClient = client
-	return c.authenticatedClient, nil
+	me, err := client.Me().Get()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"[AzureAuth] Failed to retrieve data about authenticated user: %v",
+			err,
+		)
+	}
+
+	fmt.Printf("[AzureAuth] Authenticated as %s\n", *me.GetDisplayName())
+
+	authenticatedClient := &GraphClient{authenticatedClient: client}
+	return authenticatedClient, nil
 }
 
 // ReadOpenTasks uses the Microsoft Graph API to fetch the To-Do tasks with status
 // 'notStarted'.
-func ReadOpenTasks(
-	client *msgraphsdk.GraphServiceClient,
+func (graph GraphClient) ReadOpenTasks(
 	listID *string,
-) (models.TodoTaskCollectionResponseable, error) {
+) (*[]Task, error) {
 	openTasksFilter := "status eq 'notStarted'"
 	reqParams := &graphconfig.TasksRequestBuilderGetQueryParameters{
 		Filter: &openTasksFilter,
@@ -49,7 +79,7 @@ func ReadOpenTasks(
 		QueryParameters: reqParams,
 	}
 
-	tasks, err := client.Me().
+	tasksResponse, err := graph.authenticatedClient.Me().
 		Todo().
 		ListsById(*listID).
 		Tasks().
@@ -61,7 +91,21 @@ func ReadOpenTasks(
 			err,
 		)
 	}
-	return tasks, nil
+
+	tasksRespVal := tasksResponse.GetValue()
+	fmt.Printf(
+		"[ReadTasks] %v tasks fetched.\n",
+		len(tasksRespVal),
+	)
+
+	var tasks []Task
+	for _, task := range tasksRespVal {
+		tasks = append(tasks, Task{
+			ID:    task.GetId(),
+			Title: task.GetTitle(),
+		})
+	}
+	return &tasks, nil
 }
 
 func authenticate(
@@ -79,7 +123,7 @@ func authenticate(
 		},
 	)
 	if err != nil {
-		fmt.Printf("Error creating credentials: %v\n", err)
+		fmt.Printf("[AzureAuth] Error creating credentials: %v\n", err)
 	}
 
 	auth, err := a.NewAzureIdentityAuthenticationProviderWithScopes(
@@ -87,13 +131,13 @@ func authenticate(
 		[]string{"Tasks.Read"},
 	)
 	if err != nil {
-		fmt.Printf("Error authentication provider: %v\n", err)
+		fmt.Printf("[AzureAuth] Error authentication provider: %v\n", err)
 		return nil, err
 	}
 
 	adapter, err := msgraphsdk.NewGraphRequestAdapter(auth)
 	if err != nil {
-		fmt.Printf("Error creating adapter: %v\n", err)
+		fmt.Printf("[AzureAuth] Error creating adapter: %v\n", err)
 		return nil, err
 	}
 

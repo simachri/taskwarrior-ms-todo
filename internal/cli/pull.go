@@ -2,11 +2,10 @@ package cli
 
 import (
 	"fmt"
-	"os"
+	"net/rpc"
 
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
-	"github.com/simachri/taskwarrior-ms-todo/internal/mstodo"
-	tw "github.com/simachri/taskwarrior-ms-todo/internal/taskwarrior"
+	"github.com/simachri/taskwarrior-ms-todo/internal/server"
 	"github.com/spf13/cobra"
 )
 
@@ -19,70 +18,34 @@ type tasksPullCmd struct {
 	cmd    *cobra.Command
 }
 
-func (cmd tasksPullCmd) exec(client *msgraphsdk.GraphServiceClient) error {
-	fmt.Printf(
-		"[taskPull] Fetching tasks from MS To-Do list '%s'...\n",
-		*cmd.listID,
-	)
-	tasks, err := mstodo.ReadOpenTasks(client, cmd.listID)
+func (cmd *tasksPullCmd) exec() error {
+	rpcClient, err := rpc.Dial("tcp", "127.0.0.1:41001")
 	if err != nil {
 		return err
 	}
+	defer rpcClient.Close()
 
-	tList := tasks.GetValue()
-	fmt.Printf(
-		"[taskPull] '%v' tasks fetched.\n",
-		len(tList),
-	)
-
-	for _, task := range tList {
-		todoTaskID := task.GetId()
-		taskExists, err := tw.TaskExists(*todoTaskID)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		if taskExists {
-			fmt.Printf(
-				"[taskPull] SKIP - task already exists in Taskwarrior: '%s'\n",
-				*task.GetTitle(),
-			)
-			continue
-		}
-
-		fmt.Printf(
-			"[taskPull] NEW - Create new Taskwarrior task: '%s'\n",
-			*task.GetTitle(),
-		)
-		tUUID, err := tw.CreateTask(*task.GetTitle(), *todoTaskID)
-		if err != nil {
-			fmt.Printf("[taskPull] Failed to create Taskwarrior task: %v\n", err)
-			continue
-		}
-		fmt.Printf(
-			"[taskPull] NEW - New Taskwarrior task created with UUID: %s\n",
-			tUUID,
-		)
+	resp := new(server.Response)
+	err = rpcClient.Call(server.TasksPullCmd, &server.Request{
+		ListID: *cmd.listID,
+	}, resp)
+	if err != nil {
+		return err
 	}
+	fmt.Println(resp.Message)
+
 	return nil
 }
 
-func addPullCmd(parentCmd *cobra.Command, client *mstodo.Client) {
+func addPullCmd(parentCmd *cobra.Command) {
 	pullCmd := &tasksPullCmd{}
 
 	c := &cobra.Command{
 		Use:   "pull [MS To-Do Tasklist ID]",
 		Short: "Pull tasks",
-		Long:  `Pulls the tasks from a MS To-Do list and creates them as tasks in  Taskwarrior`,
+		Long:  `Pulls the tasks from a MS To-Do list and creates them as tasks in Taskwarrior`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			authenticatedClient, err := client.Get(
-				os.Getenv("TENANT_ID"),
-				os.Getenv("CLIENT_ID"),
-			)
-			if err != nil {
-				return err
-			}
-			return pullCmd.exec(authenticatedClient)
+			return pullCmd.exec()
 		},
 	}
 	pullCmd.listID = c.PersistentFlags().
