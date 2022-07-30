@@ -41,15 +41,17 @@ func addPullCmd(parentCmd *cobra.Command) {
 	pullCmd := &tasksPullCmd{}
 
 	c := &cobra.Command{
-		Use:   "pull [MS To-Do Tasklist ID]",
+		Use:   "pull",
 		Short: "Pull tasks",
 		Long:  `Pulls the tasks from a MS To-Do list and creates them as tasks in Taskwarrior`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return pullCmd.exec()
 		},
 	}
+    listIDFlagName := "list"
 	pullCmd.listID = c.PersistentFlags().
-		StringP("list", "l", "", "MS To-Do Tasklist ID")
+		StringP(listIDFlagName, "l", "", "MS To-Do Tasklist ID (required)")
+    c.MarkPersistentFlagRequired(listIDFlagName)
 	pullCmd.cmd = c
 
 	parentCmd.AddCommand(c)
