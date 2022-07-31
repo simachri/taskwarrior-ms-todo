@@ -7,6 +7,7 @@ import (
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/simachri/taskwarrior-ms-todo/internal/server"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 type command interface {
@@ -14,8 +15,9 @@ type command interface {
 }
 
 type tasksPullCmd struct {
-	listID *string
-	cmd    *cobra.Command
+	listID    *string
+	getListID func() *string
+	cmd       *cobra.Command
 }
 
 func (cmd *tasksPullCmd) exec() error {
@@ -27,7 +29,7 @@ func (cmd *tasksPullCmd) exec() error {
 
 	resp := new(server.Response)
 	err = rpcClient.Call(server.TasksPullCmd, &server.Request{
-		ListID: *cmd.listID,
+		ListID: *cmd.getListID(),
 	}, resp)
 	if err != nil {
 		return err
@@ -37,7 +39,7 @@ func (cmd *tasksPullCmd) exec() error {
 	return nil
 }
 
-func addPullCmd(parentCmd *cobra.Command) {
+func addPullCmd(parentCmd *cobra.Command, configAdapter *viper.Viper) {
 	pullCmd := &tasksPullCmd{}
 
 	c := &cobra.Command{
@@ -48,10 +50,22 @@ func addPullCmd(parentCmd *cobra.Command) {
 			return pullCmd.exec()
 		},
 	}
-    listIDFlagName := "list"
+
+	listIDFlagName := "list"
+	listIDConfigPath := "sync.pull.list_id"
 	pullCmd.listID = c.PersistentFlags().
-		StringP(listIDFlagName, "l", "", "MS To-Do Tasklist ID (required)")
-    c.MarkPersistentFlagRequired(listIDFlagName)
+		StringP(listIDFlagName, "l", "",
+			fmt.Sprintf("MS To-Do Tasklist ID (if not provided, then it is read "+
+				"from config path %s)", listIDConfigPath))
+	configAdapter.BindPFlag(
+		listIDConfigPath,
+		c.PersistentFlags().Lookup(listIDFlagName),
+	)
+	pullCmd.getListID = func() *string {
+		listID := configAdapter.GetString(listIDConfigPath)
+		return &listID
+	}
+
 	pullCmd.cmd = c
 
 	parentCmd.AddCommand(c)
