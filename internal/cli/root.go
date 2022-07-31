@@ -45,7 +45,7 @@ func Execute() error {
 	}
 	addUpCmd(rootCmd, graphClientFactory, getUpCmdConfig)
 
-	addPullCmd(rootCmd)
+	addPullCmd(rootCmd, cfgFileViper)
 
 	return rootCmd.Execute()
 }
