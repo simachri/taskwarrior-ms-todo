@@ -15,14 +15,15 @@ import (
 var authenticatedGraphClient *GraphClient
 
 type ClientFactory struct {
-    // Using functions is required as Viper parses the config not before a command's 
-    // Execute() function is called.
-    GetTenantID func() string
-    GetClientID func() string
+	// Using functions is required as Viper parses the config not before a command's
+	// Execute() function is called.
+	GetTenantID func() string
+	GetClientID func() string
 }
 
 type ClientFacade interface {
 	ReadOpenTasks(listID *string) (*[]Task, error)
+	ReadTaskByID(listID *string, taskID *string) (*Task, error)
 }
 
 type GraphClient struct {
@@ -66,6 +67,51 @@ func (fact *ClientFactory) GetGraphClient() (*GraphClient,
 	return authenticatedClient, nil
 }
 
+// ReadTaskByID retrieves task data for a given task by a task ID from a list, given by a
+// list ID.
+func (graph GraphClient) ReadTaskByID(
+	listID *string,
+	taskID *string,
+) (*Task, error) {
+	taskData, err := graph.authenticatedClient.Me().
+		Todo().
+		ListsById(*listID).
+		TasksById(*taskID).
+		Get()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"[ReadTaskByID] Failed to fetch the task with ID '%s' from To-Do list '%s': %w\n",
+			*taskID,
+			*listID,
+			err,
+		)
+	}
+	if taskData == nil {
+		return nil, fmt.Errorf(
+			"[ReadTaskByID] Task with ID '%s' does not exist in To-Do list '%s': %w\n",
+			*taskID,
+			*listID,
+			err,
+		)
+	}
+
+	fmt.Printf(
+		"[ReadTaskByI] Data of task read: '%s'\n",
+		*taskData.GetTitle(),
+	)
+
+	completedAt := ""
+	if taskData.GetCompletedDateTime() != nil {
+		completedAt = *taskData.GetCompletedDateTime().GetDateTime()
+	}
+
+	return &Task{
+		ID:          taskData.GetId(),
+		Title:       taskData.GetTitle(),
+		CompletedAt: &completedAt,
+	}, nil
+}
+
 // ReadOpenTasks uses the Microsoft Graph API to fetch the To-Do tasks with status
 // 'notStarted'.
 func (graph GraphClient) ReadOpenTasks(
@@ -86,7 +132,7 @@ func (graph GraphClient) ReadOpenTasks(
 		GetWithRequestConfigurationAndResponseHandler(reqConf, nil)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"[ReadTasks] Failed to fetch the tasks of To-Do list '%s': %w\n",
+			"[ReadOpenTasks] Failed to fetch the tasks of To-Do list '%s': %w\n",
 			*listID,
 			err,
 		)
@@ -94,7 +140,7 @@ func (graph GraphClient) ReadOpenTasks(
 
 	tasksRespVal := tasksResponse.GetValue()
 	fmt.Printf(
-		"[ReadTasks] %v tasks fetched.\n",
+		"[ReadOpenTasks] %v tasks fetched.\n",
 		len(tasksRespVal),
 	)
 
