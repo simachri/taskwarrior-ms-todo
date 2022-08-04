@@ -10,6 +10,8 @@ import (
 
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	graphconfig "github.com/microsoftgraph/msgraph-sdk-go/me/todo/lists/item/tasks"
+
+	models "github.com/simachri/taskwarrior-ms-todo/internal/models"
 )
 
 var authenticatedGraphClient *GraphClient
@@ -22,8 +24,8 @@ type ClientFactory struct {
 }
 
 type ClientFacade interface {
-	ReadOpenTasks(listID *string) (*[]Task, error)
-	ReadTaskByID(listID *string, taskID *string) (*Task, error)
+	ReadOpenTasks(listID *string) (*[]models.Task, error)
+	ReadTaskByID(listID *string, taskID *string) (*models.Task, error)
 }
 
 type GraphClient struct {
@@ -72,7 +74,7 @@ func (fact *ClientFactory) GetGraphClient() (*GraphClient,
 func (graph GraphClient) ReadTaskByID(
 	listID *string,
 	taskID *string,
-) (*Task, error) {
+) (*models.Task, error) {
 	taskData, err := graph.authenticatedClient.Me().
 		Todo().
 		ListsById(*listID).
@@ -105,7 +107,7 @@ func (graph GraphClient) ReadTaskByID(
 		completedAt = *taskData.GetCompletedDateTime().GetDateTime()
 	}
 
-	return &Task{
+	return &models.Task{
 		ID:          taskData.GetId(),
 		Title:       taskData.GetTitle(),
 		CompletedAt: &completedAt,
@@ -116,7 +118,7 @@ func (graph GraphClient) ReadTaskByID(
 // 'notStarted'.
 func (graph GraphClient) ReadOpenTasks(
 	listID *string,
-) (*[]Task, error) {
+) (*[]models.Task, error) {
 	openTasksFilter := "status eq 'notStarted'"
 	reqParams := &graphconfig.TasksRequestBuilderGetQueryParameters{
 		Filter: &openTasksFilter,
@@ -144,9 +146,9 @@ func (graph GraphClient) ReadOpenTasks(
 		len(tasksRespVal),
 	)
 
-	var tasks []Task
+	var tasks []models.Task
 	for _, task := range tasksRespVal {
-		tasks = append(tasks, Task{
+		tasks = append(tasks, models.Task{
 			ID:    task.GetId(),
 			Title: task.GetTitle(),
 		})

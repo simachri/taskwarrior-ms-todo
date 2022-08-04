@@ -1,4 +1,4 @@
-package mstodo
+package models
 
 type Task struct {
 	ID    *string
