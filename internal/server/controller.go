@@ -21,13 +21,13 @@ func (h *Handler) OnTasksPull(req Request, res *Response) error {
 		taskCountExisted int32
 		taskCountError   int32
 	)
-	listID := req.ListID
+	todoListID := req.ListID
 
 	fmt.Printf(
 		"[OnTasksPull] Fetching tasks from MS To-Do list '%s'...\n",
-		listID,
+		todoListID,
 	)
-	tasks, err := h.client.ReadOpenTasks(&listID)
+	tasks, err := h.client.ReadOpenTasks(&todoListID)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func (h *Handler) OnTasksPull(req Request, res *Response) error {
 			"[OnTasksPull] NEW - Create new Taskwarrior task: '%s'\n",
 			*task.Title,
 		)
-		tUUID, err := taskwarrior.CreateTask(task.Title, todoTaskID)
+		tUUID, err := taskwarrior.CreateTask(task.Title, &todoListID, todoTaskID)
 		if err != nil {
 			fmt.Printf("[OnTasksPull] Failed to create Taskwarrior task: %v\n", err)
 			taskCountError = taskCountError + 1

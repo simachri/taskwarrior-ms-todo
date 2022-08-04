@@ -7,13 +7,17 @@ import (
 
 // Taskwarrior User Defined Attribute (UDA): Microsoft To-Do Task ID as received from the
 // API
-const UDANameTodoID = "ms_todo_id"
+const UDANameTodoTaskID = "ms_todo_taskid"
+
+// Taskwarrior User Defined Attribute (UDA): Microsoft To-Do List ID as received from the
+// API
+const UDANameTodoListID = "ms_todo_listid"
 
 // TaskExists returns 'true' if a Taskwarrior task for the given Microsoft To-Do task ID
 // exists, otherwise 'false'.
-func TaskExists(todoID string) (bool, error) {
+func TaskExists(todoTaskID string) (bool, error) {
 	cmd := exec.Command("bash", "-c",
-		fmt.Sprintf("task %s:%s", UDANameTodoID, todoID))
+		fmt.Sprintf("task %s:%s", UDANameTodoTaskID, todoTaskID))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		exitErr, ok := err.(*exec.ExitError)
@@ -26,7 +30,7 @@ func TaskExists(todoID string) (bool, error) {
 		fmt.Printf("[TaskExists] Output:\n%s\n", out)
 		return false, fmt.Errorf(
 			"[TaskExists] Failed to check task existence for todoID '%v': %v\n",
-			todoID,
+			todoTaskID,
 			err,
 		)
 	}
@@ -35,16 +39,30 @@ func TaskExists(todoID string) (bool, error) {
 }
 
 // CreateTask creates a Taskwarrior task using the 'task' CLI.
-// The last 13 characters of the Microsoft To-Do task ID are stored as user-defined
-// attribute (UDA) in the Taskwarrior task.
-func CreateTask(title *string, todoID *string) (taskUUID string, err error) {
+// The Microsoft To-Do task and list IDs are stored as user-defined attribute (UDA) in
+// the Taskwarrior task.
+func CreateTask(
+	title *string,
+	todoListID *string,
+	todoTaskID *string,
+) (taskUUID string, err error) {
 	// 'task add "TITLE" returns a message 'Created task 42.'
-	cmd := exec.Command("bash", "-c",
-		fmt.Sprintf("task add '%s' %s:'%s'", *title, UDANameTodoID, *todoID)+
+	cmd := exec.Command(
+		"bash",
+		"-c",
+		fmt.Sprintf(
+			"task add '%s' %s:'%s' %s:'%s'",
+			*title,
+			UDANameTodoListID,
+			*todoListID,
+			UDANameTodoTaskID,
+			*todoTaskID,
+		)+
 			// Extract the task ID
 			" | grep -oP '[0-9]+'"+
 			// Extract the task UUID.
-			" | xargs -I '{id}' task _get {id}.uuid")
+			" | xargs -I '{id}' task _get {id}.uuid",
+	)
 
 	uuid, err := cmd.Output()
 	if err != nil {
@@ -54,7 +72,8 @@ func CreateTask(title *string, todoID *string) (taskUUID string, err error) {
 		)
 	}
 
-	return fmt.Sprintf("%s", uuid), nil
+	// The UUID has a trailing newline character that needs to be stripped.
+	return string(uuid[:len(uuid)-1]), nil
 }
 
 // CreateUDA creates a User Defined Attribute (UDA) in Taskwarrior.

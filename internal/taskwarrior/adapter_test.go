@@ -43,7 +43,8 @@ func TestCreateUDAs_noUDAs_existAfterwards(t *testing.T) {
 	out, err := exec.Command("bash", "-c", fmt.Sprintf("cat %s", taskrc)).
 		CombinedOutput()
 	t.Log(string(out))
-	err = exec.Command("bash", "-c", fmt.Sprintf("cat %s | grep uda.%s.label=%s", taskrc, udaName, udaLabel)).
+	err = exec.Command("bash", "-c",
+		fmt.Sprintf("cat %s | grep uda.%s.label=%s", taskrc, udaName, udaLabel)).
 		Run()
 	assert.NoError(
 		t,
@@ -55,7 +56,8 @@ func TestCreateUDAs_noUDAs_existAfterwards(t *testing.T) {
 			udaLabel,
 		),
 	)
-	err = exec.Command("bash", "-c", fmt.Sprintf("cat %s | grep uda.%s.type=string", taskrc, udaName)).
+	err = exec.Command("bash", "-c",
+		fmt.Sprintf("cat %s | grep uda.%s.type=string", taskrc, udaName)).
 		Run()
 	assert.NoError(
 		t,
@@ -74,8 +76,11 @@ func setup(t *testing.T) {
 	assert.NoError(t, err, "Failed to create TASKDATA directory for testing.")
 	os.Setenv("TASKDATA", taskdataPath)
 
-	// Create UDA for the To-Do ID.
-	err = CreateUDA(UDANameTodoID, "foo")
+	// Create UDA for the To-Do List ID.
+	err = CreateUDA(UDANameTodoListID, "todo_list_id")
+	assert.NoError(t, err, "CreateUDA returned an error.")
+	// Create UDA for the To-Do Task ID.
+	err = CreateUDA(UDANameTodoTaskID, "todo_task_id")
 	assert.NoError(t, err, "CreateUDA returned an error.")
 }
 
@@ -99,8 +104,9 @@ func TestCreateTask_isOK(t *testing.T) {
 	setup(t)
 
 	taskTitle := "foo"
-	toDoID := generateRandomString(10)
-	taskUUID, err := CreateTask(&taskTitle, &toDoID)
+	toDoListID := generateRandomString(10)
+	toDoTaskID := generateRandomString(10)
+	taskUUID, err := CreateTask(&taskTitle, &toDoListID, &toDoTaskID)
 	assert.NoError(
 		t,
 		err,
@@ -116,14 +122,38 @@ func TestTaskExists_exists_returnsTrue(t *testing.T) {
 	setup(t)
 
 	taskTitle := "foo"
-	toDoID := generateRandomString(10)
-	CreateTask(&taskTitle, &toDoID)
-	exists, err := TaskExists(toDoID)
+	toDoListID := generateRandomString(10)
+	toDoTaskID := generateRandomString(10)
+	CreateTask(&taskTitle, &toDoListID, &toDoTaskID)
+	exists, err := TaskExists(toDoTaskID)
 	assert.NoError(
 		t,
 		err,
 		"TaskExists returned an error")
 	assert.True(t, exists)
+}
+
+func TestCreateTask_taskHasUDAs(t *testing.T) {
+	setup(t)
+
+	taskTitle := "foo"
+	toDoListID := generateRandomString(10)
+	toDoTaskID := generateRandomString(10)
+	taskUUID, _ := CreateTask(&taskTitle, &toDoListID, &toDoTaskID)
+
+	cmd := fmt.Sprintf("task _get %s.%s", taskUUID, UDANameTodoListID)
+	out, err := exec.Command("bash", "-c", cmd).
+		CombinedOutput()
+	assert.NoError(t, err)
+	outListID := string(out[:len(out)-1])
+	assert.Equal(t, toDoListID, outListID)
+
+	cmd = fmt.Sprintf("task _get %s.%s", taskUUID, UDANameTodoTaskID)
+	out, err = exec.Command("bash", "-c", cmd).
+		CombinedOutput()
+	assert.NoError(t, err)
+	outTaskID := string(out[:len(out)-1])
+	assert.Equal(t, toDoTaskID, outTaskID)
 }
 
 func generateRandomString(length int) string {
