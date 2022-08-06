@@ -88,8 +88,11 @@ func setup(t *testing.T) {
 func TestTaskExists_notExists_returnsFalse(t *testing.T) {
 	setup(t)
 
-	toDoID := generateRandomString(10)
-	exists, err := TaskExists(toDoID)
+	toDoListID := generateRandomString(10)
+	toDoTaskID := generateRandomString(10)
+
+	exists, err := TaskExists(&toDoListID, &toDoTaskID)
+
 	assert.NoError(
 		t,
 		err,
@@ -97,7 +100,7 @@ func TestTaskExists_notExists_returnsFalse(t *testing.T) {
 	assert.False(
 		t,
 		exists,
-		fmt.Sprintf("Task with To-Do ID '%s' must not exist.", toDoID),
+		fmt.Sprintf("Task with To-Do ID '%s' must not exist.", toDoTaskID),
 	)
 }
 
@@ -126,7 +129,9 @@ func TestTaskExists_exists_returnsTrue(t *testing.T) {
 	toDoListID := generateRandomString(10)
 	toDoTaskID := generateRandomString(10)
 	CreateTask(&taskTitle, &toDoListID, &toDoTaskID)
-	exists, err := TaskExists(toDoTaskID)
+
+	exists, err := TaskExists(&toDoListID, &toDoTaskID)
+
 	assert.NoError(
 		t,
 		err,
@@ -173,17 +178,23 @@ func TestGetTasks_isOK(t *testing.T) {
 	taskTitleA := "foo"
 	taskTitleB := "bar"
 	toDoListID := generateRandomString(10)
-	toDoTaskID := generateRandomString(10)
-	CreateTask(&taskTitleA, &toDoListID, &toDoTaskID)
-	CreateTask(&taskTitleB, &toDoListID, &toDoTaskID)
+	toDoTaskIDA := generateRandomString(10)
+	toDoTaskIDB := generateRandomString(10)
+	CreateTask(&taskTitleA, &toDoListID, &toDoTaskIDA)
+	CreateTask(&taskTitleB, &toDoListID, &toDoTaskIDB)
 
 	tasks, err := GetAllToDoTasks()
+
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(*tasks))
+
 	assert.Equal(t, taskTitleA, *(*tasks)[0].Title)
-	assert.Equal(t, toDoTaskID, *(*tasks)[0].ToDoID)
+	assert.Equal(t, toDoListID, *(*tasks)[0].ToDoListID)
+	assert.Equal(t, toDoTaskIDA, *(*tasks)[0].ToDoTaskID)
 	assert.Equal(t, models.PENDING, (*tasks)[0].Status)
+
 	assert.Equal(t, taskTitleB, *(*tasks)[1].Title)
+	assert.Equal(t, toDoListID, *(*tasks)[1].ToDoListID)
+	assert.Equal(t, toDoTaskIDB, *(*tasks)[1].ToDoTaskID)
 	assert.Equal(t, models.PENDING, (*tasks)[1].Status)
-	assert.Equal(t, toDoTaskID, *(*tasks)[1].ToDoID)
 }

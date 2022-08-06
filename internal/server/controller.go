@@ -33,8 +33,9 @@ func (h *Handler) OnTasksPull(req Request, res *Response) error {
 	}
 
 	for _, task := range *tasks {
-		todoTaskID := task.ToDoID
-		taskExists, err := taskwarrior.TaskExists(*todoTaskID)
+		toDoListID := task.ToDoListID
+		toDoTaskID := task.ToDoTaskID
+		taskExists, err := taskwarrior.TaskExists(toDoListID, toDoTaskID)
 		if err != nil {
 			fmt.Println(err)
 			taskCountError = taskCountError + 1
@@ -53,7 +54,7 @@ func (h *Handler) OnTasksPull(req Request, res *Response) error {
 			"[OnTasksPull] NEW - Create new Taskwarrior task: '%s'\n",
 			*task.Title,
 		)
-		tUUID, err := taskwarrior.CreateTask(task.Title, &todoListID, todoTaskID)
+		tUUID, err := taskwarrior.CreateTask(task.Title, &todoListID, toDoTaskID)
 		if err != nil {
 			fmt.Printf("[OnTasksPull] Failed to create Taskwarrior task: %v\n", err)
 			taskCountError = taskCountError + 1

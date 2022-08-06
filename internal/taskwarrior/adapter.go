@@ -18,10 +18,19 @@ const UDANameTodoTaskID = "ms_todo_taskid"
 const UDANameTodoListID = "ms_todo_listid"
 
 // TaskExists returns 'true' if a Taskwarrior task for the given Microsoft To-Do task ID
-// exists, otherwise 'false'.
-func TaskExists(todoTaskID string) (bool, error) {
-	cmd := exec.Command("bash", "-c",
-		fmt.Sprintf("task %s:%s", UDANameTodoTaskID, todoTaskID))
+// exists in the given task list, otherwise 'false'.
+func TaskExists(toDoListID *string, toDoTaskID *string) (bool, error) {
+	cmd := exec.Command(
+		"bash",
+		"-c",
+		fmt.Sprintf(
+			"task %s:%s %s:%s",
+			UDANameTodoListID,
+			*toDoListID,
+			UDANameTodoTaskID,
+			*toDoTaskID,
+		),
+	)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		exitErr, ok := err.(*exec.ExitError)
@@ -33,8 +42,11 @@ func TaskExists(todoTaskID string) (bool, error) {
 		fmt.Printf("[TaskExists] Command:\n%s\n", cmd.Args)
 		fmt.Printf("[TaskExists] Output:\n%s\n", out)
 		return false, fmt.Errorf(
-			"[TaskExists] Failed to check task existence for todoID '%v': %v\n",
-			todoTaskID,
+			"[TaskExists] Failed to check task existence:\nTo-Do List ID: %v\n"+
+				"To-Do Task ID: %v\n"+
+				"Error: %w\n",
+			toDoListID,
+			toDoTaskID,
 			err,
 		)
 	}
@@ -158,10 +170,15 @@ func parseTaskStringAttrFromJSON(
 func parseTasksFromJSON(tasksJSON *[]map[string]interface{}) (*[]models.Task, error) {
 	var tasks []models.Task
 	for _, taskJSON := range *tasksJSON {
-        todoTaskID, err := parseTaskStringAttrFromJSON(UDANameTodoTaskID, &taskJSON)
-        if err != nil {
-            return nil, err
-        }
+		toDoListID, err := parseTaskStringAttrFromJSON(UDANameTodoListID, &taskJSON)
+		if err != nil {
+			return nil, err
+		}
+
+		toDoTaskID, err := parseTaskStringAttrFromJSON(UDANameTodoTaskID, &taskJSON)
+		if err != nil {
+			return nil, err
+		}
 
 		taskDescr, err := parseTaskStringAttrFromJSON("description", &taskJSON)
 		if err != nil {
@@ -184,7 +201,8 @@ func parseTasksFromJSON(tasksJSON *[]map[string]interface{}) (*[]models.Task, er
 		}
 
 		tasks = append(tasks, models.Task{
-			ToDoID:          &todoTaskID,
+			ToDoListID:  &toDoListID,
+			ToDoTaskID:  &toDoTaskID,
 			Title:       &taskDescr,
 			CompletedAt: &taskStatusStr,
 			Status:      taskStatus,

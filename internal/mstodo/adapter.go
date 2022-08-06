@@ -108,7 +108,7 @@ func (graph GraphClient) ReadTaskByID(
 	}
 
 	return &models.Task{
-		ToDoID:          taskData.GetId(),
+		ToDoTaskID:  taskData.GetId(),
 		Title:       taskData.GetTitle(),
 		CompletedAt: &completedAt,
 	}, nil
@@ -149,8 +149,9 @@ func (graph GraphClient) ReadOpenTasks(
 	var tasks []models.Task
 	for _, task := range tasksRespVal {
 		tasks = append(tasks, models.Task{
-			ToDoID:    task.GetId(),
-			Title: task.GetTitle(),
+			ToDoListID: listID,
+			ToDoTaskID: task.GetId(),
+			Title:      task.GetTitle(),
 		})
 	}
 	return &tasks, nil
