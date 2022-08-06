@@ -23,7 +23,9 @@
 
   1. `go install github.com/simachri/taskwarrior-ms-todo/cmd/twtodo@latest` 
 
+  1. The _CLI tool_ `grep` needs to be installed and available on path.
   
+
 ## Usage
 
 ### Start server
