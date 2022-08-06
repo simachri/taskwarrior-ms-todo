@@ -33,7 +33,7 @@ func (h *Handler) OnTasksPull(req Request, res *Response) error {
 	}
 
 	for _, task := range *tasks {
-		todoTaskID := task.ID
+		todoTaskID := task.ToDoID
 		taskExists, err := taskwarrior.TaskExists(*todoTaskID)
 		if err != nil {
 			fmt.Println(err)

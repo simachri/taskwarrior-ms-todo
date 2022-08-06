@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/simachri/taskwarrior-ms-todo/internal/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -164,4 +165,25 @@ func generateRandomString(length int) string {
 		s[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(s)
+}
+
+func TestGetTasks_isOK(t *testing.T) {
+	setup(t)
+
+	taskTitleA := "foo"
+	taskTitleB := "bar"
+	toDoListID := generateRandomString(10)
+	toDoTaskID := generateRandomString(10)
+	CreateTask(&taskTitleA, &toDoListID, &toDoTaskID)
+	CreateTask(&taskTitleB, &toDoListID, &toDoTaskID)
+
+	tasks, err := GetAllToDoTasks()
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(*tasks))
+	assert.Equal(t, taskTitleA, *(*tasks)[0].Title)
+	assert.Equal(t, toDoTaskID, *(*tasks)[0].ToDoID)
+	assert.Equal(t, models.PENDING, (*tasks)[0].Status)
+	assert.Equal(t, taskTitleB, *(*tasks)[1].Title)
+	assert.Equal(t, models.PENDING, (*tasks)[1].Status)
+	assert.Equal(t, toDoTaskID, *(*tasks)[1].ToDoID)
 }

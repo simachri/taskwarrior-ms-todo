@@ -1,8 +1,12 @@
 package taskwarrior
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
+
+	models "github.com/simachri/taskwarrior-ms-todo/internal/models"
 )
 
 // Taskwarrior User Defined Attribute (UDA): Microsoft To-Do Task ID as received from the
@@ -101,4 +105,90 @@ func CreateUDA(name string, label string) (err error) {
 	}
 
 	return nil
+}
+
+func GetAllToDoTasks() (*[]models.Task, error) {
+	// Get JSON representation of all tasks with an MS To-Do Task ID.
+	cmdExport := fmt.Sprintf("task %s.any: export", UDANameTodoTaskID)
+	// If a TASKRC or TASKDATA override is active for Taskwarrior, for example when
+	// running unit tests, additional lines are printed to stderr to show the overrides
+	// used for the export. Thus, only use Output() instead of CombinedOutput().
+	tasksJSONExport, err := exec.Command("bash", "-c", cmdExport).Output()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"[GetAllToDoTasks] Failed to get JSON representation of tasks: %w\n"+
+				"Output of command: %s\n",
+			err,
+			string(tasksJSONExport),
+		)
+	}
+
+	var tasksJSON []map[string]interface{}
+	err = json.Unmarshal(tasksJSONExport, &tasksJSON)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"[GetAllToDoTasks] Failed to unmarshall JSON representation of tasks: %w\n"+
+				"Run '%s' to get the JSON.\n",
+			err,
+			cmdExport,
+		)
+	}
+
+	return parseTasksFromJSON(&tasksJSON)
+}
+
+func parseTaskStringAttrFromJSON(
+	attrName string,
+	taskJSON *map[string]interface{},
+) (string, error) {
+	attr, ok := (*taskJSON)[attrName].(string)
+	if ok == false {
+		return "", errors.New(fmt.Sprintf(
+			"[parseTaskStringAttrFromJSON] Failed to parse '%s' of task as string.\n"+
+				"Task JSON: \n%v\n",
+			attrName,
+			taskJSON,
+		),
+		)
+	}
+
+	return attr, nil
+}
+
+func parseTasksFromJSON(tasksJSON *[]map[string]interface{}) (*[]models.Task, error) {
+	var tasks []models.Task
+	for _, taskJSON := range *tasksJSON {
+        todoTaskID, err := parseTaskStringAttrFromJSON(UDANameTodoTaskID, &taskJSON)
+        if err != nil {
+            return nil, err
+        }
+
+		taskDescr, err := parseTaskStringAttrFromJSON("description", &taskJSON)
+		if err != nil {
+			return nil, err
+		}
+
+		taskStatusStr, err := parseTaskStringAttrFromJSON("status", &taskJSON)
+		if err != nil {
+			return nil, err
+		}
+		taskStatus, err := models.ConvStatusFromTW(&taskStatusStr)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"[GetAllToDoTasks] Failed to parse 'status' of task.\n"+
+					"Task JSON: \n%v\n"+
+					"Error: %w",
+				taskJSON,
+				err,
+			)
+		}
+
+		tasks = append(tasks, models.Task{
+			ToDoID:          &todoTaskID,
+			Title:       &taskDescr,
+			CompletedAt: &taskStatusStr,
+			Status:      taskStatus,
+		})
+	}
+	return &tasks, nil
 }
