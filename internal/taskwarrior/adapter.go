@@ -17,9 +17,9 @@ const UDANameTodoTaskID = "ms_todo_taskid"
 // API
 const UDANameTodoListID = "ms_todo_listid"
 
-// TaskExists returns 'true' if a Taskwarrior task for the given Microsoft To-Do task ID
+// taskExists returns 'true' if a Taskwarrior task for the given Microsoft To-Do task ID
 // exists in the given task list, otherwise 'false'.
-func TaskExists(toDoListID *string, toDoTaskID *string) (bool, error) {
+func taskExists(toDoListID *string, toDoTaskID *string) (bool, error) {
 	cmd := exec.Command(
 		"bash",
 		"-c",
@@ -39,10 +39,10 @@ func TaskExists(toDoListID *string, toDoTaskID *string) (bool, error) {
 			return false, nil
 		}
 
-		fmt.Printf("[TaskExists] Command:\n%s\n", cmd.Args)
-		fmt.Printf("[TaskExists] Output:\n%s\n", out)
+		fmt.Printf("[taskExists] Command:\n%s\n", cmd.Args)
+		fmt.Printf("[taskExists] Output:\n%s\n", out)
 		return false, fmt.Errorf(
-			"[TaskExists] Failed to check task existence:\nTo-Do List ID: %v\n"+
+			"[taskExists] Failed to check task existence:\nTo-Do List ID: %v\n"+
 				"To-Do Task ID: %v\n"+
 				"Error: %w\n",
 			toDoListID,
@@ -54,10 +54,10 @@ func TaskExists(toDoListID *string, toDoTaskID *string) (bool, error) {
 	return true, nil
 }
 
-// CreateTask creates a Taskwarrior task using the 'task' CLI.
+// createTask creates a Taskwarrior task using the 'task' CLI.
 // The Microsoft To-Do task and list IDs are stored as user-defined attribute (UDA) in
 // the Taskwarrior task.
-func CreateTask(
+func createTask(
 	title *string,
 	todoListID *string,
 	todoTaskID *string,
@@ -83,7 +83,7 @@ func CreateTask(
 	uuid, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf(
-			"[CreateTask] Failed to create task and extract the UUID: %w\n",
+			"[createTask] Failed to create task and extract the UUID: %w\n",
 			err,
 		)
 	}

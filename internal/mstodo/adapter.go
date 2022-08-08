@@ -82,7 +82,8 @@ func (graph GraphClient) ReadTaskByID(
 		Get()
 	if err != nil {
 		return nil, fmt.Errorf(
-			"[ReadTaskByID] Failed to fetch the task with ID '%s' from To-Do list '%s': %w\n",
+			"[ReadTaskByID] Failed to fetch the task with ID '%s' from To-Do list "+
+				"'%s': %w\n",
 			*taskID,
 			*listID,
 			err,

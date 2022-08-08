@@ -15,64 +15,81 @@ type Handler struct {
 	client mstodo.ClientFacade
 }
 
-func (h *Handler) OnTasksPull(req Request, res *Response) error {
-	var (
-		taskCountCreated int32
-		taskCountExisted int32
-		taskCountError   int32
-	)
-	todoListID := req.ListID
+type fetchStatistics struct {
+	taskCountFetched int
+	taskCountCreated int32
+	taskCountExisted int32
+	taskCountError   int32
+}
+
+func importOpenTasks(
+	client mstodo.ClientFacade,
+	toDoListID *string,
+) (statistics *fetchStatistics, err error) {
+	statistics = &fetchStatistics{
+		taskCountFetched: 0,
+		taskCountCreated: 0,
+		taskCountExisted: 0,
+		taskCountError:   0,
+	}
 
 	fmt.Printf(
-		"[OnTasksPull] Fetching tasks from MS To-Do list '%s'...\n",
-		todoListID,
+		"[importOpenTasks] Fetching tasks from MS To-Do list '%s'...\n",
+		*toDoListID,
 	)
-	tasks, err := h.client.ReadOpenTasks(&todoListID)
+	tasks, err := client.ReadOpenTasks(toDoListID)
+	if err != nil {
+		return statistics, err
+	}
+
+	statistics.taskCountFetched = len(*tasks)
+
+	for _, task := range *tasks {
+		result, err := taskwarrior.Import(&task)
+		if err != nil {
+			fmt.Printf("[importOpenTasks] Error: %v", err)
+			statistics.taskCountError = statistics.taskCountError + 1
+			continue
+		}
+
+		switch result {
+		case taskwarrior.TASK_CREATED:
+			fmt.Printf(
+				"[importOpenTasks] SKIP - task already exists in Taskwarrior: '%s'\n",
+				*task.Title,
+			)
+			statistics.taskCountCreated = statistics.taskCountCreated + 1
+			continue
+
+		case taskwarrior.TASK_EXISTS_AND_SKIPPED:
+			fmt.Printf(
+				"[importOpenTasks] NEW - Taskwarrior task created: '%s'\n",
+				*task.Title,
+			)
+			statistics.taskCountExisted = statistics.taskCountExisted + 1
+			continue
+		}
+	}
+
+	return statistics, nil
+}
+
+func (h *Handler) OnTasksPull(req Request, res *Response) error {
+	statistics, err := importOpenTasks(h.client, &req.ListID)
 	if err != nil {
 		return err
 	}
 
-	for _, task := range *tasks {
-		toDoListID := task.ToDoListID
-		toDoTaskID := task.ToDoTaskID
-		taskExists, err := taskwarrior.TaskExists(toDoListID, toDoTaskID)
-		if err != nil {
-			fmt.Println(err)
-			taskCountError = taskCountError + 1
-			continue
-		}
-		if taskExists {
-			fmt.Printf(
-				"[OnTasksPull] SKIP - task already exists in Taskwarrior: '%s'\n",
-				*task.Title,
-			)
-			taskCountExisted = taskCountExisted + 1
-			continue
-		}
-
-		fmt.Printf(
-			"[OnTasksPull] NEW - Create new Taskwarrior task: '%s'\n",
-			*task.Title,
-		)
-		tUUID, err := taskwarrior.CreateTask(task.Title, &todoListID, toDoTaskID)
-		if err != nil {
-			fmt.Printf("[OnTasksPull] Failed to create Taskwarrior task: %v\n", err)
-			taskCountError = taskCountError + 1
-			continue
-		}
-		fmt.Printf(
-			"[OnTasksPull] NEW - New Taskwarrior task created with UUID: %s\n",
-			tUUID,
-		)
-		taskCountCreated = taskCountCreated + 1
-	}
-
 	res.Message = fmt.Sprintf(
-		"Pull succesful:\nTasks fetched: %v\nTasks created: %v\nTasks that had already existed: %v\nErrors: %v",
-		len(*tasks),
-		taskCountCreated,
-		taskCountExisted,
-		taskCountError,
+		"Pull succesful:\n"+
+			"Tasks fetched: %v\n"+
+			"Tasks created: %v\n"+
+			"Tasks existing: %v\n"+
+			"Errors: %v",
+		statistics.taskCountFetched,
+		statistics.taskCountCreated,
+		statistics.taskCountExisted,
+		statistics.taskCountError,
 	)
 
 	return nil

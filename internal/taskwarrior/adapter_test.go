@@ -91,7 +91,7 @@ func TestTaskExists_notExists_returnsFalse(t *testing.T) {
 	toDoListID := generateRandomString(10)
 	toDoTaskID := generateRandomString(10)
 
-	exists, err := TaskExists(&toDoListID, &toDoTaskID)
+	exists, err := taskExists(&toDoListID, &toDoTaskID)
 
 	assert.NoError(
 		t,
@@ -110,7 +110,7 @@ func TestCreateTask_isOK(t *testing.T) {
 	taskTitle := "foo"
 	toDoListID := generateRandomString(10)
 	toDoTaskID := generateRandomString(10)
-	taskUUID, err := CreateTask(&taskTitle, &toDoListID, &toDoTaskID)
+	taskUUID, err := createTask(&taskTitle, &toDoListID, &toDoTaskID)
 	assert.NoError(
 		t,
 		err,
@@ -128,9 +128,9 @@ func TestTaskExists_exists_returnsTrue(t *testing.T) {
 	taskTitle := "foo"
 	toDoListID := generateRandomString(10)
 	toDoTaskID := generateRandomString(10)
-	CreateTask(&taskTitle, &toDoListID, &toDoTaskID)
+	createTask(&taskTitle, &toDoListID, &toDoTaskID)
 
-	exists, err := TaskExists(&toDoListID, &toDoTaskID)
+	exists, err := taskExists(&toDoListID, &toDoTaskID)
 
 	assert.NoError(
 		t,
@@ -145,7 +145,7 @@ func TestCreateTask_taskHasUDAs(t *testing.T) {
 	taskTitle := "foo"
 	toDoListID := generateRandomString(10)
 	toDoTaskID := generateRandomString(10)
-	taskUUID, _ := CreateTask(&taskTitle, &toDoListID, &toDoTaskID)
+	taskUUID, _ := createTask(&taskTitle, &toDoListID, &toDoTaskID)
 
 	cmd := fmt.Sprintf("task _get %s.%s", taskUUID, UDANameTodoListID)
 	out, err := exec.Command("bash", "-c", cmd).
@@ -180,8 +180,8 @@ func TestGetTasks_isOK(t *testing.T) {
 	toDoListID := generateRandomString(10)
 	toDoTaskIDA := generateRandomString(10)
 	toDoTaskIDB := generateRandomString(10)
-	CreateTask(&taskTitleA, &toDoListID, &toDoTaskIDA)
-	CreateTask(&taskTitleB, &toDoListID, &toDoTaskIDB)
+	createTask(&taskTitleA, &toDoListID, &toDoTaskIDA)
+	createTask(&taskTitleB, &toDoListID, &toDoTaskIDB)
 
 	tasks, err := GetAllToDoTasks()
 
