@@ -17,8 +17,8 @@ const UDANameTodoTaskID = "ms_todo_taskid"
 // API
 const UDANameTodoListID = "ms_todo_listid"
 
-// taskExists returns 'true' if a Taskwarrior task for the given Microsoft To-Do task ID
-// exists in the given task list, otherwise 'false'.
+// taskExists returns 'true' if a Taskwarrior task for the given Microsoft To-Do List and
+// Task ID exists in the given task list, otherwise 'false'.
 func taskExists(toDoListID *string, toDoTaskID *string) (bool, error) {
 	cmd := exec.Command(
 		"bash",
@@ -62,7 +62,7 @@ func createTask(
 	todoListID *string,
 	todoTaskID *string,
 ) (taskUUID string, err error) {
-	// 'task add "TITLE" returns a message 'Created task 42.'
+	// 'task add ...' returns a message 'Created task 42.'
 	cmd := exec.Command(
 		"bash",
 		"-c",
@@ -209,4 +209,20 @@ func parseTasksFromJSON(tasksJSON *[]map[string]interface{}) (*[]models.Task, er
 		})
 	}
 	return &tasks, nil
+}
+func UDAExists(udaName *string) (bool, error) {
+	if udaName == nil || *udaName == "" {
+		return false, errors.New("Cannot check UDA existence. Provided UDA is empty.")
+	}
+
+	err := exec.Command("bash", "-c", fmt.Sprintf("task udas | grep %s", *udaName)).Run()
+	if err != nil {
+		if err.(*exec.ExitError).ExitCode() == 1 {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return true, nil
 }

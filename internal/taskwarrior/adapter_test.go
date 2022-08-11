@@ -23,7 +23,6 @@ func createTempTaskRC(t *testing.T) (taskrcPath string) {
 }
 
 func TestCreateUDAs_emptyString_raisesErr(t *testing.T) {
-	// Use a custom .taskrc for testing.
 	createTempTaskRC(t)
 	udaName := ""
 	udaLabel := ""
@@ -32,8 +31,34 @@ func TestCreateUDAs_emptyString_raisesErr(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestUDAExists_isTrue(t *testing.T) {
+	createTempTaskRC(t)
+	udaName := "foo"
+	udaLabel := "bar"
+
+	err := CreateUDA(udaName, udaLabel)
+	assert.NoError(t, err, "CreateUDA returned an error.")
+
+    udaExists, err := UDAExists(&udaName)
+    assert.NoError(t, err)
+    assert.True(t, udaExists)
+}
+
+func TestUDAExists_isFalse(t *testing.T) {
+	createTempTaskRC(t)
+	udaName := "foo"
+	udaLabel := "bar"
+
+	err := CreateUDA(udaName, udaLabel)
+	assert.NoError(t, err, "CreateUDA returned an error.")
+
+    anotherUDAName := "baz"
+    udaExists, err := UDAExists(&anotherUDAName)
+    assert.NoError(t, err)
+    assert.False(t, udaExists)
+}
+
 func TestCreateUDAs_noUDAs_existAfterwards(t *testing.T) {
-	// Use a custom .taskrc for testing.
 	taskrc := createTempTaskRC(t)
 	udaName := "foo"
 	udaLabel := "bar"
@@ -85,7 +110,46 @@ func setup(t *testing.T) {
 	assert.NoError(t, err, "CreateUDA returned an error.")
 }
 
-func TestTaskExists_notExists_returnsFalse(t *testing.T) {
+func TestTaskDelete_taskExists_isFalse(t *testing.T) {
+	setup(t)
+
+	taskTitle := "foo"
+	toDoListID := generateRandomString(10)
+	toDoTaskID := generateRandomString(10)
+
+	uuid, err := createTask(&taskTitle, &toDoListID, &toDoTaskID)
+	assert.NoError(t, err)
+
+	cmdStr := fmt.Sprintf(
+        // Deleting a task shows a prompt to confirm the deletion.
+		"'yes' | task %s delete",
+		uuid,
+	)
+	cmd := exec.Command(
+		"bash",
+		"-c",
+		cmdStr,
+	)
+	err = cmd.Run()
+	assert.NoError(t, err)
+
+	exists, err := taskExists(&toDoListID, &toDoTaskID)
+	assert.NoError(
+		t,
+		err,
+		"TaskExists must not fail.")
+	assert.False(
+		t,
+		exists,
+		fmt.Sprintf(
+			"Task with To-Do List ID '%s' and Task ID '%s' must not exist.",
+			toDoListID,
+			toDoTaskID,
+		),
+	)
+}
+
+func TestTaskExists_notExists_isFalse(t *testing.T) {
 	setup(t)
 
 	toDoListID := generateRandomString(10)
