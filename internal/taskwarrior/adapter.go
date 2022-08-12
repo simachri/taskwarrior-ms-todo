@@ -198,21 +198,22 @@ func parseTasksFromJSON(tasksJSON *[]map[string]interface{}) (*[]models.Task, er
 		}
 
 		tasks = append(tasks, models.Task{
-			ToDoListID:  &toDoListID,
-			ToDoTaskID:  &toDoTaskID,
-			Title:       &taskDescr,
-			CompletedAt: &taskStatusStr,
-			Status:      taskStatus,
+			ToDoListID:      &toDoListID,
+			ToDoTaskID:      &toDoTaskID,
+			TaskWarriorUUID: &taskwarriorUUID,
+			Title:           &taskDescr,
+			CompletedAt:     &taskStatusStr,
+			Status:          taskStatus,
 		})
 	}
 	return &tasks, nil
 }
-func UDAExists(udaName *string) (bool, error) {
-	if udaName == nil || *udaName == "" {
+func UDAExists(udaName string) (bool, error) {
+	if udaName == "" {
 		return false, errors.New("Cannot check UDA existence. Provided UDA is empty.")
 	}
 
-	err := exec.Command("bash", "-c", fmt.Sprintf("task udas | grep %s", *udaName)).Run()
+	err := exec.Command("bash", "-c", fmt.Sprintf("task udas | grep %s", udaName)).Run()
 	if err != nil {
 		if err.(*exec.ExitError).ExitCode() == 1 {
 			return false, nil
@@ -222,4 +223,20 @@ func UDAExists(udaName *string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// CreateIntegrationUDAs creates the Taskwarrior User-Defined-Attributes (UDAs) that are required 
+// for the Taskwarrior - MS-To-Do-Integration to work.
+func CreateIntegrationUDAs() error {
+	err := CreateUDA(models.UDANameTodoListID, "MS To-Do List ID")
+    if err != nil {
+        return err
+    }
+
+	err = CreateUDA(models.UDANameTodoTaskID, "MS To-Do Task ID")
+    if err != nil {
+        return err
+    }
+
+    return nil
 }

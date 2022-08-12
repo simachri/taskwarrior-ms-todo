@@ -11,16 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupUDAs(t *testing.T) {
-	err := CreateUDA(models.UDANameTodoListID, "todo_list_id")
-	assert.NoError(t, err, "CreateUDA returned an error.")
-	err = CreateUDA(models.UDANameTodoTaskID, "todo_task_id")
-	assert.NoError(t, err, "CreateUDA returned an error.")
-}
-
 func TestUDAExists_isTrue(t *testing.T) {
 	testUtils.NewTaskwarriorEnv(t)
-	setupUDAs(t)
 
 	udaName := "foo"
 	udaLabel := "bar"
@@ -35,6 +27,7 @@ func TestUDAExists_isTrue(t *testing.T) {
 
 func TestUDAExists_isFalse(t *testing.T) {
 	testUtils.CreateTempTaskRC(t)
+
 	udaName := "foo"
 	udaLabel := "bar"
 
@@ -83,7 +76,8 @@ func TestCreateUDAs_noUDAs_existAfterwards(t *testing.T) {
 
 func TestTaskDelete_taskExists_isFalse(t *testing.T) {
 	testUtils.NewTaskwarriorEnv(t)
-	setupUDAs(t)
+	err := CreateIntegrationUDAs()
+	assert.NoError(t, err)
 
 	taskTitle := "foo"
 	toDoListID := generateRandomString(10)
@@ -123,7 +117,8 @@ func TestTaskDelete_taskExists_isFalse(t *testing.T) {
 
 func TestTaskExists_notExists_isFalse(t *testing.T) {
 	testUtils.NewTaskwarriorEnv(t)
-	setupUDAs(t)
+	err := CreateIntegrationUDAs()
+	assert.NoError(t, err)
 
 	toDoListID := generateRandomString(10)
 	toDoTaskID := generateRandomString(10)
@@ -143,7 +138,8 @@ func TestTaskExists_notExists_isFalse(t *testing.T) {
 
 func TestCreateTask_isOK(t *testing.T) {
 	testUtils.NewTaskwarriorEnv(t)
-	setupUDAs(t)
+	err := CreateIntegrationUDAs()
+	assert.NoError(t, err)
 
 	taskTitle := "foo"
 	toDoListID := generateRandomString(10)
@@ -162,7 +158,8 @@ func TestCreateTask_isOK(t *testing.T) {
 
 func TestTaskExists_exists_returnsTrue(t *testing.T) {
 	testUtils.NewTaskwarriorEnv(t)
-	setupUDAs(t)
+	err := CreateIntegrationUDAs()
+	assert.NoError(t, err)
 
 	taskTitle := "foo"
 	toDoListID := generateRandomString(10)
@@ -180,7 +177,8 @@ func TestTaskExists_exists_returnsTrue(t *testing.T) {
 
 func TestCreateTask_taskHasUDAs(t *testing.T) {
 	testUtils.NewTaskwarriorEnv(t)
-	setupUDAs(t)
+	err := CreateIntegrationUDAs()
+	assert.NoError(t, err)
 
 	taskTitle := "foo"
 	toDoListID := generateRandomString(10)
@@ -214,7 +212,8 @@ func generateRandomString(length int) string {
 
 func TestReadTasksAll_isOK(t *testing.T) {
 	testUtils.NewTaskwarriorEnv(t)
-	setupUDAs(t)
+	err := CreateIntegrationUDAs()
+	assert.NoError(t, err)
 
 	taskTitleA := "foo"
 	taskTitleB := "bar"

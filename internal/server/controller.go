@@ -102,6 +102,13 @@ func Start(client mstodo.ClientFacade, port *int32) error {
 
 	fmt.Println("[Server] Starting...")
 
+	fmt.Println("[Server] Performing health checks...")
+	err := checkHealth()
+	if err != nil {
+		return err
+	}
+	fmt.Println("[Server] All health check passed.")
+
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", *port))
 	if err != nil {
 		return err
@@ -113,3 +120,29 @@ func Start(client mstodo.ClientFacade, port *int32) error {
 
 	return nil
 }
+
+func checkHealth() error {
+	fmt.Println("[healthCheck] Checking existence of User-Defined-Attributes (UDAs).")
+	if !udasExist() {
+		return errors.New(fmt.Sprintf("[healthCheck] The following Taskwarrior "+
+			"User-Defined-Attributes have to exist. Create them by running the command "+
+			"'twtodo setup'.\n"+
+			"              %s\n"+
+			"              %s\n",
+			models.UDANameTodoListID,
+			models.UDANameTodoTaskID))
+	}
+
+	return nil
+}
+
+func udasExist() bool {
+	udas := [2]string{models.UDANameTodoListID, models.UDANameTodoTaskID}
+	for _, udaName := range udas {
+		if exists, _ := taskwarrior.UDAExists(udaName); !exists {
+			return false
+		}
+	}
+	return true
+}
+

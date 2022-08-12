@@ -23,9 +23,10 @@ const (
 )
 
 type Task struct {
-	ToDoListID *string
-	ToDoTaskID *string
-	Title      *string
+	ToDoListID      *string
+	ToDoTaskID      *string
+	TaskWarriorUUID *string
+	Title           *string
 	// Format is yyyy-MM-DDThh:mm:ss, example: 2022-08-02T00:00:00.0000000
 	CompletedAt *string
 	Status      TaskStatus
