@@ -119,7 +119,7 @@ func CreateUDA(name string, label string) (err error) {
 	return nil
 }
 
-func GetAllToDoTasks() (*[]models.Task, error) {
+func ReadTasksAll() (*[]models.Task, error) {
 	// Get JSON representation of all tasks with an MS To-Do Task ID.
 	cmdExport := fmt.Sprintf("task %s.any: export", UDANameTodoTaskID)
 	// If a TASKRC or TASKDATA override is active for Taskwarrior, for example when

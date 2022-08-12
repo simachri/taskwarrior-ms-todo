@@ -3,63 +3,52 @@ package taskwarrior
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 
 	"github.com/simachri/taskwarrior-ms-todo/internal/models"
+	testUtils "github.com/simachri/taskwarrior-ms-todo/internal/test"
 	"github.com/stretchr/testify/assert"
 )
 
-func createTempTaskRC(t *testing.T) (taskrcPath string) {
-	taskrcPath = filepath.Join(t.TempDir(), "taskrc")
-	file, err := os.Create(taskrcPath)
-	assert.NoError(t, err, "Failed to create .taskrc for testing.")
-	err = file.Close()
-	assert.NoError(t, err, "Failed to close file handle to .taskrc.")
-	os.Setenv("TASKRC", taskrcPath)
-	return taskrcPath
-}
-
-func TestCreateUDAs_emptyString_raisesErr(t *testing.T) {
-	createTempTaskRC(t)
-	udaName := ""
-	udaLabel := ""
-
-	err := CreateUDA(udaName, udaLabel)
-	assert.Error(t, err)
+func setupUDAs(t *testing.T) {
+	err := CreateUDA(models.UDANameTodoListID, "todo_list_id")
+	assert.NoError(t, err, "CreateUDA returned an error.")
+	err = CreateUDA(models.UDANameTodoTaskID, "todo_task_id")
+	assert.NoError(t, err, "CreateUDA returned an error.")
 }
 
 func TestUDAExists_isTrue(t *testing.T) {
-	createTempTaskRC(t)
+	testUtils.NewTaskwarriorEnv(t)
+	setupUDAs(t)
+
 	udaName := "foo"
 	udaLabel := "bar"
 
 	err := CreateUDA(udaName, udaLabel)
 	assert.NoError(t, err, "CreateUDA returned an error.")
 
-    udaExists, err := UDAExists(&udaName)
-    assert.NoError(t, err)
-    assert.True(t, udaExists)
+	udaExists, err := UDAExists(udaName)
+	assert.NoError(t, err)
+	assert.True(t, udaExists)
 }
 
 func TestUDAExists_isFalse(t *testing.T) {
-	createTempTaskRC(t)
+	testUtils.CreateTempTaskRC(t)
 	udaName := "foo"
 	udaLabel := "bar"
 
 	err := CreateUDA(udaName, udaLabel)
 	assert.NoError(t, err, "CreateUDA returned an error.")
 
-    anotherUDAName := "baz"
-    udaExists, err := UDAExists(&anotherUDAName)
-    assert.NoError(t, err)
-    assert.False(t, udaExists)
+	anotherUDAName := "baz"
+	udaExists, err := UDAExists(anotherUDAName)
+	assert.NoError(t, err)
+	assert.False(t, udaExists)
 }
 
 func TestCreateUDAs_noUDAs_existAfterwards(t *testing.T) {
-	taskrc := createTempTaskRC(t)
+	taskrc := testUtils.CreateTempTaskRC(t)
 	udaName := "foo"
 	udaLabel := "bar"
 
@@ -92,26 +81,9 @@ func TestCreateUDAs_noUDAs_existAfterwards(t *testing.T) {
 	)
 }
 
-func setup(t *testing.T) {
-	// Use a custom .taskrc for testing.
-	createTempTaskRC(t)
-
-	// Use a custom TASKDATA directory for testing.
-	taskdataPath := filepath.Join(t.TempDir(), "task")
-	err := os.Mkdir(taskdataPath, 0755)
-	assert.NoError(t, err, "Failed to create TASKDATA directory for testing.")
-	os.Setenv("TASKDATA", taskdataPath)
-
-	// Create UDA for the To-Do List ID.
-	err = CreateUDA(UDANameTodoListID, "todo_list_id")
-	assert.NoError(t, err, "CreateUDA returned an error.")
-	// Create UDA for the To-Do Task ID.
-	err = CreateUDA(UDANameTodoTaskID, "todo_task_id")
-	assert.NoError(t, err, "CreateUDA returned an error.")
-}
-
 func TestTaskDelete_taskExists_isFalse(t *testing.T) {
-	setup(t)
+	testUtils.NewTaskwarriorEnv(t)
+	setupUDAs(t)
 
 	taskTitle := "foo"
 	toDoListID := generateRandomString(10)
@@ -121,7 +93,7 @@ func TestTaskDelete_taskExists_isFalse(t *testing.T) {
 	assert.NoError(t, err)
 
 	cmdStr := fmt.Sprintf(
-        // Deleting a task shows a prompt to confirm the deletion.
+		// Deleting a task shows a prompt to confirm the deletion.
 		"'yes' | task %s delete",
 		uuid,
 	)
@@ -150,7 +122,8 @@ func TestTaskDelete_taskExists_isFalse(t *testing.T) {
 }
 
 func TestTaskExists_notExists_isFalse(t *testing.T) {
-	setup(t)
+	testUtils.NewTaskwarriorEnv(t)
+	setupUDAs(t)
 
 	toDoListID := generateRandomString(10)
 	toDoTaskID := generateRandomString(10)
@@ -169,7 +142,8 @@ func TestTaskExists_notExists_isFalse(t *testing.T) {
 }
 
 func TestCreateTask_isOK(t *testing.T) {
-	setup(t)
+	testUtils.NewTaskwarriorEnv(t)
+	setupUDAs(t)
 
 	taskTitle := "foo"
 	toDoListID := generateRandomString(10)
@@ -187,7 +161,8 @@ func TestCreateTask_isOK(t *testing.T) {
 }
 
 func TestTaskExists_exists_returnsTrue(t *testing.T) {
-	setup(t)
+	testUtils.NewTaskwarriorEnv(t)
+	setupUDAs(t)
 
 	taskTitle := "foo"
 	toDoListID := generateRandomString(10)
@@ -204,21 +179,22 @@ func TestTaskExists_exists_returnsTrue(t *testing.T) {
 }
 
 func TestCreateTask_taskHasUDAs(t *testing.T) {
-	setup(t)
+	testUtils.NewTaskwarriorEnv(t)
+	setupUDAs(t)
 
 	taskTitle := "foo"
 	toDoListID := generateRandomString(10)
 	toDoTaskID := generateRandomString(10)
 	taskUUID, _ := createTask(&taskTitle, &toDoListID, &toDoTaskID)
 
-	cmd := fmt.Sprintf("task _get %s.%s", taskUUID, UDANameTodoListID)
+	cmd := fmt.Sprintf("task _get %s.%s", taskUUID, models.UDANameTodoListID)
 	out, err := exec.Command("bash", "-c", cmd).
 		CombinedOutput()
 	assert.NoError(t, err)
 	outListID := string(out[:len(out)-1])
 	assert.Equal(t, toDoListID, outListID)
 
-	cmd = fmt.Sprintf("task _get %s.%s", taskUUID, UDANameTodoTaskID)
+	cmd = fmt.Sprintf("task _get %s.%s", taskUUID, models.UDANameTodoTaskID)
 	out, err = exec.Command("bash", "-c", cmd).
 		CombinedOutput()
 	assert.NoError(t, err)
@@ -236,8 +212,9 @@ func generateRandomString(length int) string {
 	return string(s)
 }
 
-func TestGetTasks_isOK(t *testing.T) {
-	setup(t)
+func TestReadTasksAll_isOK(t *testing.T) {
+	testUtils.NewTaskwarriorEnv(t)
+	setupUDAs(t)
 
 	taskTitleA := "foo"
 	taskTitleB := "bar"
@@ -247,7 +224,7 @@ func TestGetTasks_isOK(t *testing.T) {
 	createTask(&taskTitleA, &toDoListID, &toDoTaskIDA)
 	createTask(&taskTitleB, &toDoListID, &toDoTaskIDB)
 
-	tasks, err := GetAllToDoTasks()
+	tasks, err := ReadTasksAll()
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(*tasks))
