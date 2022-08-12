@@ -8,6 +8,15 @@ import (
 type TaskStatus int
 
 const (
+	// Taskwarrior User Defined Attribute (UDA): Microsoft To-Do Task ID as received from the
+	// API
+	UDANameTodoTaskID string = "ms_todo_taskid"
+	// Taskwarrior User Defined Attribute (UDA): Microsoft To-Do List ID as received from the
+	// API
+	UDANameTodoListID string = "ms_todo_listid"
+)
+
+const (
 	PENDING TaskStatus = iota
 	COMPLETED
 	DELETED

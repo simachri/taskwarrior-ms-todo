@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/rpc"
 
+	"github.com/simachri/taskwarrior-ms-todo/internal/models"
 	"github.com/simachri/taskwarrior-ms-todo/internal/mstodo"
 	"github.com/simachri/taskwarrior-ms-todo/internal/taskwarrior"
 )

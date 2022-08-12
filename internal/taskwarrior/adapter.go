@@ -6,16 +6,8 @@ import (
 	"fmt"
 	"os/exec"
 
-	models "github.com/simachri/taskwarrior-ms-todo/internal/models"
+	"github.com/simachri/taskwarrior-ms-todo/internal/models"
 )
-
-// Taskwarrior User Defined Attribute (UDA): Microsoft To-Do Task ID as received from the
-// API
-const UDANameTodoTaskID = "ms_todo_taskid"
-
-// Taskwarrior User Defined Attribute (UDA): Microsoft To-Do List ID as received from the
-// API
-const UDANameTodoListID = "ms_todo_listid"
 
 // taskExists returns 'true' if a Taskwarrior task for the given Microsoft To-Do List and
 // Task ID exists in the given task list, otherwise 'false'.
@@ -25,9 +17,9 @@ func taskExists(toDoListID *string, toDoTaskID *string) (bool, error) {
 		"-c",
 		fmt.Sprintf(
 			"task %s:%s %s:%s",
-			UDANameTodoListID,
+			models.UDANameTodoListID,
 			*toDoListID,
-			UDANameTodoTaskID,
+			models.UDANameTodoTaskID,
 			*toDoTaskID,
 		),
 	)
@@ -69,9 +61,9 @@ func createTask(
 		fmt.Sprintf(
 			"task add '%s' %s:'%s' %s:'%s'",
 			*title,
-			UDANameTodoListID,
+			models.UDANameTodoListID,
 			*todoListID,
-			UDANameTodoTaskID,
+			models.UDANameTodoTaskID,
 			*todoTaskID,
 		)+
 			// Extract the task ID
@@ -121,7 +113,7 @@ func CreateUDA(name string, label string) (err error) {
 
 func ReadTasksAll() (*[]models.Task, error) {
 	// Get JSON representation of all tasks with an MS To-Do Task ID.
-	cmdExport := fmt.Sprintf("task %s.any: export", UDANameTodoTaskID)
+	cmdExport := fmt.Sprintf("task %s.any: export", models.UDANameTodoTaskID)
 	// If a TASKRC or TASKDATA override is active for Taskwarrior, for example when
 	// running unit tests, additional lines are printed to stderr to show the overrides
 	// used for the export. Thus, only use Output() instead of CombinedOutput().
@@ -170,12 +162,17 @@ func parseTaskStringAttrFromJSON(
 func parseTasksFromJSON(tasksJSON *[]map[string]interface{}) (*[]models.Task, error) {
 	var tasks []models.Task
 	for _, taskJSON := range *tasksJSON {
-		toDoListID, err := parseTaskStringAttrFromJSON(UDANameTodoListID, &taskJSON)
+		toDoListID, err := parseTaskStringAttrFromJSON(models.UDANameTodoListID, &taskJSON)
 		if err != nil {
 			return nil, err
 		}
 
-		toDoTaskID, err := parseTaskStringAttrFromJSON(UDANameTodoTaskID, &taskJSON)
+		toDoTaskID, err := parseTaskStringAttrFromJSON(models.UDANameTodoTaskID, &taskJSON)
+		if err != nil {
+			return nil, err
+		}
+
+		taskwarriorUUID, err := parseTaskStringAttrFromJSON("uuid", &taskJSON)
 		if err != nil {
 			return nil, err
 		}
