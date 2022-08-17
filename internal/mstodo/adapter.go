@@ -83,7 +83,7 @@ func (graph GraphClient) ReadTaskByID(
 	if err != nil {
 		return nil, fmt.Errorf(
 			"[ReadTaskByID] Failed to fetch the task with ID '%s' from To-Do list "+
-				"'%s': %w\n",
+				"'%s':\n%w\n",
 			*taskID,
 			*listID,
 			err,
@@ -91,7 +91,7 @@ func (graph GraphClient) ReadTaskByID(
 	}
 	if taskData == nil {
 		return nil, fmt.Errorf(
-			"[ReadTaskByID] Task with ID '%s' does not exist in To-Do list '%s': %w\n",
+			"[ReadTaskByID] Task with ID '%s' does not exist in To-Do list '%s':\n%w\n",
 			*taskID,
 			*listID,
 			err,
@@ -99,7 +99,7 @@ func (graph GraphClient) ReadTaskByID(
 	}
 
 	fmt.Printf(
-		"[ReadTaskByI] Data of task read: '%s'\n",
+		"[ReadTaskByID] Data of task read: '%s'\n",
 		*taskData.GetTitle(),
 	)
 
@@ -108,10 +108,23 @@ func (graph GraphClient) ReadTaskByID(
 		completedAt = *taskData.GetCompletedDateTime().GetDateTime()
 	}
 
+	todoTaskStatus := taskData.GetStatus().String()
+	taskStatus, err := models.ConvStatusFromToDo(&todoTaskStatus)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"[ReadTaskByID] Task with ID '%s': Failed to parse task status '%s':\n%w\n",
+			*taskID,
+			todoTaskStatus,
+			err,
+		)
+	}
+
 	return &models.Task{
 		ToDoTaskID:  taskData.GetId(),
+		ToDoListID:  listID,
 		Title:       taskData.GetTitle(),
 		CompletedAt: &completedAt,
+		Status:      taskStatus,
 	}, nil
 }
 
@@ -120,7 +133,7 @@ func (graph GraphClient) ReadTaskByID(
 func (graph GraphClient) ReadOpenTasks(
 	listID *string,
 ) (*[]models.Task, error) {
-	openTasksFilter := "status eq 'notStarted'"
+	openTasksFilter := fmt.Sprintf("status eq '%s'", models.TODO_TASKSTATUS_NOTSTARTED)
 	reqParams := &graphconfig.TasksRequestBuilderGetQueryParameters{
 		Filter: &openTasksFilter,
 	}

@@ -33,3 +33,19 @@ func Import(task *models.Task) (ImportResult, error) {
 
 	return TASK_CREATED, nil
 }
+
+func Update(task *models.TaskwarriorTask) error {
+	taskExists, err := taskExists(task.ToDoListID, task.ToDoTaskID)
+	if err != nil {
+		return err
+	}
+	if !taskExists {
+		return errors.New(
+			fmt.Sprintf("[Update] Failed - no Taskwarrior task exists for\n"+
+				"MS To-Do List ID: %s\n"+
+				"MS To-Do Task ID: %s\n", *task.ToDoListID, *task.ToDoTaskID),
+		)
+	}
+
+	return update(task)
+}

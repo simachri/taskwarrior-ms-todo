@@ -231,10 +231,10 @@ func TestReadTasksAll_isOK(t *testing.T) {
 	assert.Equal(t, taskTitleA, *(*tasks)[0].Title)
 	assert.Equal(t, toDoListID, *(*tasks)[0].ToDoListID)
 	assert.Equal(t, toDoTaskIDA, *(*tasks)[0].ToDoTaskID)
-	assert.Equal(t, models.PENDING, (*tasks)[0].Status)
+	assert.Equal(t, models.TW_TASKSTATUS_PENDING, (*tasks)[0].Status)
 
 	assert.Equal(t, taskTitleB, *(*tasks)[1].Title)
 	assert.Equal(t, toDoListID, *(*tasks)[1].ToDoListID)
 	assert.Equal(t, toDoTaskIDB, *(*tasks)[1].ToDoTaskID)
-	assert.Equal(t, models.PENDING, (*tasks)[1].Status)
+	assert.Equal(t, models.TW_TASKSTATUS_PENDING, (*tasks)[1].Status)
 }

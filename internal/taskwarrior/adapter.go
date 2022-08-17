@@ -111,7 +111,7 @@ func CreateUDA(name string, label string) (err error) {
 	return nil
 }
 
-func ReadTasksAll() (*[]models.Task, error) {
+func ReadTasksAll() (*[]models.TaskwarriorTask, error) {
 	// Get JSON representation of all tasks with an MS To-Do Task ID.
 	cmdExport := fmt.Sprintf("task %s.any: export", models.UDANameTodoTaskID)
 	// If a TASKRC or TASKDATA override is active for Taskwarrior, for example when
@@ -159,15 +159,23 @@ func parseTaskStringAttrFromJSON(
 	return attr, nil
 }
 
-func parseTasksFromJSON(tasksJSON *[]map[string]interface{}) (*[]models.Task, error) {
-	var tasks []models.Task
+func parseTasksFromJSON(
+	tasksJSON *[]map[string]interface{},
+) (*[]models.TaskwarriorTask, error) {
+	var tasks []models.TaskwarriorTask
 	for _, taskJSON := range *tasksJSON {
-		toDoListID, err := parseTaskStringAttrFromJSON(models.UDANameTodoListID, &taskJSON)
+		toDoListID, err := parseTaskStringAttrFromJSON(
+			models.UDANameTodoListID,
+			&taskJSON,
+		)
 		if err != nil {
 			return nil, err
 		}
 
-		toDoTaskID, err := parseTaskStringAttrFromJSON(models.UDANameTodoTaskID, &taskJSON)
+		toDoTaskID, err := parseTaskStringAttrFromJSON(
+			models.UDANameTodoTaskID,
+			&taskJSON,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -197,17 +205,60 @@ func parseTasksFromJSON(tasksJSON *[]map[string]interface{}) (*[]models.Task, er
 			)
 		}
 
-		tasks = append(tasks, models.Task{
-			ToDoListID:      &toDoListID,
-			ToDoTaskID:      &toDoTaskID,
+		taskCompletedAt := ""
+		if taskStatus == models.TW_TASKSTATUS_COMPLETED {
+			taskCompletedAt, err = parseTaskStringAttrFromJSON("end", &taskJSON)
+		}
+
+		tasks = append(tasks, models.TaskwarriorTask{
 			TaskWarriorUUID: &taskwarriorUUID,
-			Title:           &taskDescr,
-			CompletedAt:     &taskStatusStr,
-			Status:          taskStatus,
+			Task: models.Task{
+				ToDoListID:  &toDoListID,
+				ToDoTaskID:  &toDoTaskID,
+				Title:       &taskDescr,
+				CompletedAt: &taskCompletedAt,
+				Status:      taskStatus,
+			},
 		})
 	}
 	return &tasks, nil
 }
+
+func update(task *models.TaskwarriorTask) error {
+	if task.TaskWarriorUUID == nil ||
+		*task.TaskWarriorUUID == "" {
+		return errors.New(
+			fmt.Sprintf("[update] Cannot update task '%s': Empty UUID",
+				*task.Title))
+	}
+
+	// The output is:
+	//   Modifying task <ID and changed fields>
+	//   Modified 1 task.
+	cmd := exec.Command(
+		"bash",
+		"-c",
+		fmt.Sprintf(
+			"task %s modify '%s' %s:'%s' %s:'%s'",
+			*task.TaskWarriorUUID,
+			*task.Title,
+			models.UDANameTodoListID,
+			*task.ToDoListID,
+			models.UDANameTodoTaskID,
+			*task.ToDoTaskID,
+		))
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf(
+			"[update] Failed to update task: %w\n",
+			err,
+		)
+	}
+
+	return nil
+}
+
 func UDAExists(udaName string) (bool, error) {
 	if udaName == "" {
 		return false, errors.New("Cannot check UDA existence. Provided UDA is empty.")
@@ -225,18 +276,20 @@ func UDAExists(udaName string) (bool, error) {
 	return true, nil
 }
 
-// CreateIntegrationUDAs creates the Taskwarrior User-Defined-Attributes (UDAs) that are required 
+// CreateIntegrationUDAs creates the Taskwarrior User-Defined-Attributes (UDAs) that are required
 // for the Taskwarrior - MS-To-Do-Integration to work.
 func CreateIntegrationUDAs() error {
+	fmt.Printf("[CreateIntegrationUDAs] Creating UDA %s.\n", models.UDANameTodoListID)
 	err := CreateUDA(models.UDANameTodoListID, "MS To-Do List ID")
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
+	fmt.Printf("[CreateIntegrationUDAs] Creating UDA %s.\n", models.UDANameTodoTaskID)
 	err = CreateUDA(models.UDANameTodoTaskID, "MS To-Do Task ID")
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
-    return nil
+	return nil
 }
