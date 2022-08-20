@@ -31,6 +31,8 @@ func Execute() error {
 		GetClientID: func() string { return credentialsFileViper.GetString("client_id") },
 	}
 
+    addSetupCmd(rootCmd)
+
 	getUpCmdConfig := func() (*UpCmdConfig, error) {
 		configKey := "server"
 		var config UpCmdConfig
